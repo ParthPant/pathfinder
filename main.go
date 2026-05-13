@@ -8,8 +8,11 @@ import (
 	"os"
 	"time"
 
+	"github.com/ParthPant/pathfinder/agent"
 	"github.com/ParthPant/pathfinder/backends"
+	"github.com/ParthPant/pathfinder/llms"
 	"github.com/ParthPant/pathfinder/messages"
+	"github.com/ParthPant/pathfinder/stores"
 	"github.com/ParthPant/pathfinder/tools"
 	"github.com/joho/godotenv"
 )
@@ -19,21 +22,23 @@ func main() {
 
 	slog.SetLogLoggerLevel(slog.Level(getEnvAsInt("LOG_LEVEL")))
 
-	config := LlmConfig{
+	config := llms.LlmConfig{
 		BaseUrl:         os.Getenv("OPENROUTER_BASE_URL"),
 		APIKey:          os.Getenv("OPENROUTER_API_KEY"),
 		Model:           os.Getenv("MODEL"),
 		MaxOutputTokens: 25000,
 	}
 
-	llm := NewOpenAiLlm(config)
+	llm := llms.NewOpenAiLlm(config)
 	toolExecutor := tools.NewToolExecutor()
-	sessionRepo := NewInMemorySessionRepo()
-	executionBackend := backends.NewShellBackend(os.Getenv("WORK_DIR"), map[string]string{})
-	fsBackend := backends.NewLocalFileSystemBackend(os.Getenv("WORK_DIR"))
+	sessionRepo := stores.NewInMemorySessionRepo()
 
-	agent := NewAgent(llm, toolExecutor, sessionRepo)
-	agent.RegisterExecutionBackend(executionBackend)
+	agent := agent.NewAgent(llm, toolExecutor, sessionRepo)
+
+	// executionBackend := backends.NewShellBackend(os.Getenv("WORK_DIR"), map[string]string{})
+	// agent.RegisterExecutionBackend(executionBackend)
+
+	fsBackend := backends.NewLocalFileSystemBackend(os.Getenv("WORK_DIR"))
 	agent.RegisterFileSystemBackend(fsBackend)
 
 	agent.RegisterFunctionCall(tools.GetDateTimeTool)

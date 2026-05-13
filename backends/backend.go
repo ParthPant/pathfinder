@@ -16,3 +16,17 @@ type IFileSystemBackend interface {
 type IExecutionBackend interface {
 	Execute(ctx context.Context, input ExecuteInput) (ExecuteResult, error)
 }
+
+type FileSystemError struct {
+	e string
+}
+
+func NewFSError(e string) FileSystemError {
+	return FileSystemError{
+		e,
+	}
+}
+
+func (e FileSystemError) Error() string {
+	return e.e
+}
