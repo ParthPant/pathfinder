@@ -1,3 +1,4 @@
 .env
 pathfinder
 bin
+.agent/

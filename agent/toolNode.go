@@ -22,5 +22,5 @@ func (agent *Agent) toolNode(ctx context.Context, state AgentState) (graph.IComm
 		state.messages = append(state.messages, toolMessage)
 	}
 
-	return graph.NewCommand("llmNode", state), nil
+	return graph.NewCommand("beforeLlmNode", state), nil
 }

@@ -27,13 +27,5 @@ func (agent *Agent) llmNode(ctx context.Context, state AgentState) (graph.IComma
 
 	state.messages = append(state.messages, response)
 
-	// check for tool calls
-	if response.HasFunctionCalls() {
-		slog.Debug("Directing to toolCallNode.")
-		return graph.NewCommand("toolNode", state), nil
-	}
-
-	// end if no tool calls
-	slog.Debug("No tool calls in response.")
-	return graph.NewExitCommand[AgentState](), nil
+	return graph.NewCommand("afterLlmNode", state), nil
 }

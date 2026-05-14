@@ -27,11 +27,14 @@ func NewAgent(llm llms.IToolCallingLlm, toolExecutor tools.IToolExecutor, sessio
 	var agent Agent
 
 	nodes := map[string]graph.Node[AgentState]{
-		"llmNode":  agent.llmNode,
-		"toolNode": agent.toolNode,
+		"beforeAgentNode": agent.beforeAgentNode,
+		"beforeLlmNode":   agent.beforeLlmNode,
+		"llmNode":         agent.llmNode,
+		"afterLlmNode":    agent.afterLlmNode,
+		"toolNode":        agent.toolNode,
 	}
 
-	base := graph.NewBaseGraph(AgentState{}, nodes, "llmNode", 100, sessionRepo)
+	base := graph.NewBaseGraph(AgentState{}, nodes, "beforeAgentNode", 100, sessionRepo)
 
 	agent.BaseGraph = base
 	agent.llm = llm
