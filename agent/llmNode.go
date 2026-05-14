@@ -9,22 +9,13 @@ import (
 	"github.com/ParthPant/pathfinder/graph"
 )
 
-type llmNode struct {
-	agent *Agent
-}
-
-func (n llmNode) Run(ctx context.Context) (graph.ICommand[AgentState], error) {
+func (agent *Agent) llmNode(ctx context.Context, state AgentState) (graph.ICommand[AgentState], error) {
 	// get conversation
-	sessionId := n.agent.sessionId
-	slog.Debug("Retrieving conversation.", "sessionId", sessionId)
-	messages, err := n.agent.sessionRepo.GetById(sessionId)
-	if err != nil {
-		panic(err)
-	}
+	messages := state.messages
 
 	// generate response
 	slog.Debug("Generating LLM Response.")
-	response, err := n.agent.llm.NewResponse(ctx, messages)
+	response, err := agent.llm.NewResponse(ctx, messages)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -34,14 +25,12 @@ func (n llmNode) Run(ctx context.Context) (graph.ICommand[AgentState], error) {
 		fmt.Printf("AI: %s\n", response.OutputText())
 	}
 
-	// save response
-	slog.Debug("Saving Response.", "sessionId", sessionId)
-	n.agent.sessionRepo.SaveMessage(sessionId, response)
+	state.messages = append(state.messages, response)
 
 	// check for tool calls
 	if response.HasFunctionCalls() {
 		slog.Debug("Directing to toolCallNode.")
-		return graph.NewCommand("toolNode", n.agent.State), nil
+		return graph.NewCommand("toolNode", state), nil
 	}
 
 	// end if no tool calls

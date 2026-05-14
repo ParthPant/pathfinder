@@ -31,9 +31,9 @@ func main() {
 
 	llm := llms.NewOpenAiLlm(config)
 	toolExecutor := tools.NewToolExecutor()
-	sessionRepo := stores.NewInMemorySessionRepo()
+	inMemStore := stores.NewInMemoryStore[agent.AgentState]()
 
-	agent := agent.NewAgent(llm, toolExecutor, sessionRepo)
+	agent := agent.NewAgent(llm, toolExecutor, inMemStore)
 
 	// executionBackend := backends.NewShellBackend(os.Getenv("WORK_DIR"), map[string]string{})
 	// agent.RegisterExecutionBackend(executionBackend)

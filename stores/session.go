@@ -4,27 +4,26 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/ParthPant/pathfinder/messages"
 	"github.com/google/uuid"
 )
 
-type ISessionRepository interface {
+type IStore[T any] interface {
 	NewSession() (string, error)
-	GetById(id string) ([]messages.Message, error)
-	SaveMessage(sessionId string, message messages.Message) error
+	GetById(id string) (T, error)
+	SaveState(sessionId string, state T) error
 }
 
-type InMemorySessionRepo struct {
-	sessions map[string][]messages.Message
+type InMemoryStore[T any] struct {
+	sessions map[string]*T
 }
 
-func NewInMemorySessionRepo() *InMemorySessionRepo {
-	return &InMemorySessionRepo{
-		sessions: make(map[string][]messages.Message),
+func NewInMemoryStore[T any]() *InMemoryStore[T] {
+	return &InMemoryStore[T]{
+		sessions: make(map[string]*T),
 	}
 }
 
-func (repo *InMemorySessionRepo) NewSession() (string, error) {
+func (repo *InMemoryStore[T]) NewSession() (string, error) {
 	sid, err := uuid.NewV7()
 
 	if err != nil {
@@ -33,23 +32,24 @@ func (repo *InMemorySessionRepo) NewSession() (string, error) {
 	}
 
 	key := sid.String()
-	repo.sessions[key] = []messages.Message{}
+	repo.sessions[key] = new(T)
 	return key, nil
 }
 
-func (repo *InMemorySessionRepo) GetById(id string) ([]messages.Message, error) {
-	messages, ok := repo.sessions[id]
+// This returns a copy of the state.
+func (repo *InMemoryStore[T]) GetById(id string) (T, error) {
+	state, ok := repo.sessions[id]
 	if !ok {
 		slog.Warn("Session Not Found", "id", id)
-		return nil, fmt.Errorf("Session Not Found id=%s", id)
+		return *new(T), fmt.Errorf("Session Not Found id=%s", id)
 	}
-	return messages, nil
+	return *state, nil
 }
 
 // TODO: Make this function Atomic
-func (repo *InMemorySessionRepo) SaveMessage(sessionId string, message messages.Message) error {
+func (repo *InMemoryStore[T]) SaveState(sessionId string, state T) error {
 	if _, ok := repo.sessions[sessionId]; ok {
-		repo.sessions[sessionId] = append(repo.sessions[sessionId], message)
+		repo.sessions[sessionId] = &state
 		return nil
 	}
 	slog.Warn("Session Not Found", "id", sessionId)

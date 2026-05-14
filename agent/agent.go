@@ -11,7 +11,9 @@ import (
 	"github.com/ParthPant/pathfinder/tools"
 )
 
-type AgentState struct{}
+type AgentState struct {
+	messages []messages.Message
+}
 
 type Agent struct {
 	graph.BaseGraph[AgentState]
@@ -19,41 +21,33 @@ type Agent struct {
 	toolExecutor     tools.IToolExecutor
 	executionBackend backends.IExecutionBackend
 	fsBackend        backends.IFileSystemBackend
-	sessionRepo      stores.ISessionRepository
-	sessionId        string
 }
 
-func NewAgent(llm llms.IToolCallingLlm, toolExecutor tools.IToolExecutor, sessionRepo stores.ISessionRepository) *Agent {
+func NewAgent(llm llms.IToolCallingLlm, toolExecutor tools.IToolExecutor, sessionRepo stores.IStore[AgentState]) *Agent {
 	var agent Agent
 
-	nodes := map[string]graph.INode[AgentState]{
-		"llmNode":  llmNode{&agent},
-		"toolNode": toolNode{&agent},
+	nodes := map[string]graph.Node[AgentState]{
+		"llmNode":  agent.llmNode,
+		"toolNode": agent.toolNode,
 	}
-	base := graph.NewBaseGraph(AgentState{}, nodes, "llmNode", 100)
+
+	base := graph.NewBaseGraph(AgentState{}, nodes, "llmNode", 100, sessionRepo)
 
 	agent.BaseGraph = base
 	agent.llm = llm
 	agent.toolExecutor = toolExecutor
-	agent.sessionRepo = sessionRepo
 	return &agent
 }
 
 func (agent *Agent) UserInput(message messages.Message) error {
-	sessionId := agent.sessionId
-	if err := agent.sessionRepo.SaveMessage(sessionId, message); err != nil {
-		return err
-	}
+	state := agent.GetState()
+	state.messages = append(state.messages, message)
+	agent.SetState(state)
 	return nil
 }
 
 func (agent *Agent) StartSession() (string, error) {
-	sessionId, err := agent.sessionRepo.NewSession()
-	if err != nil {
-		return "", err
-	}
-	agent.sessionId = sessionId
-	return sessionId, nil
+	return agent.NewSession()
 }
 
 func (agent *Agent) RegisterFunctionCall(fd tools.FunctionDefinition) error {
