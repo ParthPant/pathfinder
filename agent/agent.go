@@ -3,6 +3,7 @@ package agent
 import (
 	"log/slog"
 
+	"github.com/ParthPant/pathfinder/agent/middleware"
 	"github.com/ParthPant/pathfinder/backends"
 	"github.com/ParthPant/pathfinder/graph"
 	"github.com/ParthPant/pathfinder/llms"
@@ -21,6 +22,7 @@ type Agent struct {
 	toolExecutor     tools.IToolExecutor
 	executionBackend backends.IExecutionBackend
 	fsBackend        backends.IFileSystemBackend
+	middlewares      []middleware.IMiddleware[AgentState]
 }
 
 func NewAgent(llm llms.IToolCallingLlm, toolExecutor tools.IToolExecutor, sessionRepo stores.IStore[AgentState]) *Agent {
@@ -32,6 +34,7 @@ func NewAgent(llm llms.IToolCallingLlm, toolExecutor tools.IToolExecutor, sessio
 		"llmNode":         agent.llmNode,
 		"afterLlmNode":    agent.afterLlmNode,
 		"toolNode":        agent.toolNode,
+		"afterAgentNode":  agent.afterAgentNode,
 	}
 
 	base := graph.NewBaseGraph(AgentState{}, nodes, "beforeAgentNode", 100, sessionRepo)
@@ -101,4 +104,17 @@ func (agent *Agent) RegisterFileSystemBackend(fs backends.IFileSystemBackend) er
 
 	slog.Debug("Registered File System Backend.")
 	return nil
+}
+
+func (agent *Agent) AddMiddleware(m middleware.IMiddleware[AgentState]) error {
+	agent.middlewares = append(agent.middlewares, m)
+	return nil
+}
+
+func (agent *Agent) GetModel() llms.IToolCallingLlm {
+	return agent.llm
+}
+
+func (agent *Agent) GetTools() []tools.FunctionDefinition {
+	return agent.toolExecutor.GetTools()
 }

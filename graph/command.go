@@ -41,3 +41,13 @@ func (c *ExitCommand[T]) ApplyTo(g IGraph[T]) error {
 func NewExitCommand[T any]() *ExitCommand[T] {
 	return &ExitCommand[T]{}
 }
+
+type noOpCommand[T any] struct{}
+
+func (c *noOpCommand[T]) ApplyTo(g IGraph[T]) error {
+	return nil
+}
+
+func NoOpCommand[T any]() *noOpCommand[T] {
+	return &noOpCommand[T]{}
+}

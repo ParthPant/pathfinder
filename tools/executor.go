@@ -14,6 +14,7 @@ import (
 type IToolExecutor interface {
 	Execute(ctx context.Context, functionCall messages.OutputFunctionCall) (messages.Message, error)
 	RegisterFunction(fd FunctionDefinition) error
+	GetTools() []FunctionDefinition
 }
 
 type ToolExecutor struct {
@@ -24,6 +25,14 @@ func NewToolExecutor() *ToolExecutor {
 	return &ToolExecutor{
 		Functions: make(map[string]FunctionDefinition),
 	}
+}
+
+func (e *ToolExecutor) GetTools() []FunctionDefinition {
+	tools := make([]FunctionDefinition, 0, len(e.Functions))
+	for _, tool := range e.Functions {
+		tools = append(tools, tool)
+	}
+	return tools
 }
 
 func (e *ToolExecutor) RegisterFunction(fd FunctionDefinition) error {

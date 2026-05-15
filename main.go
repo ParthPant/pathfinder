@@ -35,8 +35,8 @@ func main() {
 
 	agent := agent.NewAgent(llm, toolExecutor, inMemStore)
 
-	// executionBackend := backends.NewShellBackend(os.Getenv("WORK_DIR"), map[string]string{})
-	// agent.RegisterExecutionBackend(executionBackend)
+	executionBackend := backends.NewShellBackend(os.Getenv("WORK_DIR"), map[string]string{})
+	agent.RegisterExecutionBackend(executionBackend)
 
 	fsBackend := backends.NewLocalFileSystemBackend(os.Getenv("WORK_DIR"))
 	agent.RegisterFileSystemBackend(fsBackend)
