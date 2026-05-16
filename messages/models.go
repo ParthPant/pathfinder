@@ -3,6 +3,8 @@ package messages
 import (
 	"io"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 type MessageRole = string
@@ -23,10 +25,12 @@ type Message struct {
 }
 
 type HumanMessage struct {
+	Id      string
 	Content InputContent
 }
 
 type SystemMessage struct {
+	Id      string
 	Content InputContent
 }
 
@@ -118,17 +122,23 @@ func (m *Message) GetFunctionCalls() []OutputFunctionCall {
 	return functionCalls
 }
 
-func NewTextMessage(role string, text string) Message {
+func NewTextMessage(role string, text string, id *string) Message {
+	if id == nil {
+		uuid, _ := uuid.NewV7()
+		id = new(uuid.String())
+	}
 	message := Message{}
 	switch role {
 	case "user":
 		message.Role = role
 		message.HumanMessage.Content.Type = "input_text"
 		message.HumanMessage.Content.OfInputText = text
+		message.HumanMessage.Id = *id
 	case "system":
 		message.Role = role
 		message.SystemMessage.Content.Type = "input_text"
 		message.SystemMessage.Content.OfInputText = text
+		message.SystemMessage.Id = *id
 	default:
 		panic("Unhandeled role for input message.")
 	}
@@ -141,6 +151,20 @@ func (m *Message) OutputText() string {
 		if output.Type == "message" {
 			for _, content := range output.OfMessage.Content {
 				if content.Type == "output_text" {
+					outputText.WriteString(content.OutputText)
+				}
+			}
+		}
+	}
+	return outputText.String()
+}
+
+func (m *Message) InputText() string {
+	var outputText strings.Builder
+	for _, output := range m.AiMessage.Output {
+		if output.Type == "message" {
+			for _, content := range output.OfMessage.Content {
+				if content.Type == "input_text" {
 					outputText.WriteString(content.OutputText)
 				}
 			}

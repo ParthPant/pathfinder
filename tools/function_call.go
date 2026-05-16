@@ -90,10 +90,11 @@ func ParamsFor[T any]() ToolParams {
 
 	t := reflect.TypeFor[T]()
 	for field := range t.Fields() {
-		name, desc, required := readTag(&field)
+		name, desc, required, enums := readTag(&field)
 		properties[name] = ParamProperty{
 			Type:        paramTypes[field.Type.Name()],
 			Description: desc,
+			Enum:        enums,
 		}
 		if required {
 			requiredFields = append(requiredFields, name)
@@ -106,12 +107,13 @@ func ParamsFor[T any]() ToolParams {
 	}
 }
 
-func readTag(f *reflect.StructField) (string, string, bool) {
+func readTag(f *reflect.StructField) (string, string, bool, []string) {
 	jsonTag, _ := f.Tag.Lookup("json")
 
 	var name string = strings.Split(jsonTag, ",")[0]
 	var desc string = ""
 	var required bool = false
+	enums := make([]string, 0)
 
 	toolTag, _ := f.Tag.Lookup("tool")
 	splits := strings.Split(toolTag, ",")
@@ -122,6 +124,13 @@ func readTag(f *reflect.StructField) (string, string, bool) {
 	if len(splits) >= 2 {
 		required = strings.Trim(splits[1], " ") == "required"
 	}
+	if len(splits) >= 3 {
+		enums = strings.Split(strings.Trim(splits[2], " "), "|")
+	}
 
-	return name, desc, required
+	for _, enum := range enums {
+		enum = strings.Trim(enum, " ")
+	}
+
+	return name, desc, required, enums
 }

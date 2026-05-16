@@ -2,8 +2,8 @@ package agent
 
 import (
 	"log/slog"
+	"reflect"
 
-	"github.com/ParthPant/pathfinder/agent/middleware"
 	"github.com/ParthPant/pathfinder/backends"
 	"github.com/ParthPant/pathfinder/graph"
 	"github.com/ParthPant/pathfinder/llms"
@@ -22,7 +22,7 @@ type Agent struct {
 	toolExecutor     tools.IToolExecutor
 	executionBackend backends.IExecutionBackend
 	fsBackend        backends.IFileSystemBackend
-	middlewares      []middleware.IMiddleware[AgentState]
+	middlewares      []IMiddleware[AgentState]
 }
 
 func NewAgent(llm llms.IToolCallingLlm, toolExecutor tools.IToolExecutor, sessionRepo stores.IStore[AgentState]) *Agent {
@@ -106,8 +106,12 @@ func (agent *Agent) RegisterFileSystemBackend(fs backends.IFileSystemBackend) er
 	return nil
 }
 
-func (agent *Agent) AddMiddleware(m middleware.IMiddleware[AgentState]) error {
+func (agent *Agent) AddMiddleware(m IMiddleware[AgentState]) error {
 	agent.middlewares = append(agent.middlewares, m)
+	if err := m.OnAttach(agent); err != nil {
+		return err
+	}
+	slog.Info("Attached middleware", "middleware", reflect.TypeOf(m).Elem().Name())
 	return nil
 }
 

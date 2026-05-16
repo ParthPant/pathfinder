@@ -46,7 +46,7 @@ func (e *ToolExecutor) RegisterFunction(fd FunctionDefinition) error {
 }
 
 func (e *ToolExecutor) Execute(ctx context.Context, functionCall messages.OutputFunctionCall) (messages.Message, error) {
-	slog.Debug("Executiing Tool", "name", functionCall.Name, "callId", functionCall.CallId)
+	slog.Debug("Executing Tool", "name", functionCall.Name, "callId", functionCall.CallId)
 
 	fd, ok := e.Functions[functionCall.Name]
 	if !ok {

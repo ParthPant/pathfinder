@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	_ "embed"
 	"fmt"
 	"log/slog"
 	"os"
@@ -16,6 +17,9 @@ import (
 	"github.com/ParthPant/pathfinder/tools"
 	"github.com/joho/godotenv"
 )
+
+//go:embed prompts/memory.txt
+var memoryPrompt string
 
 func main() {
 	godotenv.Load()
@@ -33,19 +37,22 @@ func main() {
 	toolExecutor := tools.NewToolExecutor()
 	inMemStore := stores.NewInMemoryStore[agent.AgentState]()
 
-	agent := agent.NewAgent(llm, toolExecutor, inMemStore)
+	a := agent.NewAgent(llm, toolExecutor, inMemStore)
 
 	executionBackend := backends.NewShellBackend(os.Getenv("WORK_DIR"), map[string]string{})
-	agent.RegisterExecutionBackend(executionBackend)
+	a.RegisterExecutionBackend(executionBackend)
 
 	fsBackend := backends.NewLocalFileSystemBackend(os.Getenv("WORK_DIR"))
-	agent.RegisterFileSystemBackend(fsBackend)
+	a.RegisterFileSystemBackend(fsBackend)
 
-	agent.RegisterFunctionCall(tools.GetDateTimeTool)
-	agent.RegisterFunctionCall(tools.InternetSearchTool)
-	agent.RegisterFunctionCall(tools.OpenURLTool)
+	a.RegisterFunctionCall(tools.GetDateTimeTool)
+	a.RegisterFunctionCall(tools.InternetSearchTool)
+	a.RegisterFunctionCall(tools.OpenURLTool)
 
-	_, err := agent.StartSession()
+	memoryMiddleware := agent.NewMemoryMiddleware(memoryPrompt, ".pathfinder", fsBackend)
+	a.AddMiddleware(memoryMiddleware)
+
+	_, err := a.StartSession()
 	if err != nil {
 		panic(err)
 	}
@@ -64,10 +71,10 @@ func main() {
 			break
 		}
 
-		agent.UserInput(messages.NewTextMessage("user", userInput))
-		ctx_t, cancel := context.WithTimeout(ctx, time.Second*120)
+		a.UserInput(messages.NewTextMessage("user", userInput, nil))
+		ctx_t, cancel := context.WithTimeout(ctx, time.Second*60*5)
 		defer cancel()
 
-		agent.Run(ctx_t)
+		a.Run(ctx_t)
 	}
 }
