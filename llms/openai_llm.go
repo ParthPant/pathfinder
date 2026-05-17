@@ -2,6 +2,7 @@ package llms
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ParthPant/pathfinder/messages"
 	"github.com/ParthPant/pathfinder/tools"
@@ -75,30 +76,30 @@ func createInputItemList(input []messages.Message) []responses.ResponseInputItem
 func createInputItem(message messages.Message) []responses.ResponseInputItemUnionParam {
 	responseInputItems := make([]responses.ResponseInputItemUnionParam, 0)
 	switch message.Role {
-	case "user":
+	case messages.MessageRoleHuman:
 		responseInputItems = append(responseInputItems, responses.ResponseInputItemParamOfInputMessage(
 			responses.ResponseInputMessageContentListParam{
 				createMessageContent(message.HumanMessage.Content),
 			},
 			message.Role,
 		))
-	case "system":
+	case messages.MessageRoleSystem:
 		responseInputItems = append(responseInputItems, responses.ResponseInputItemParamOfInputMessage(
 			responses.ResponseInputMessageContentListParam{
 				createMessageContent(message.SystemMessage.Content),
 			},
 			message.Role,
 		))
-	case "assistant":
+	case messages.MessageRoleAI:
 		assistantOutputItems := createAssistantOutputItems(message)
 		responseInputItems = append(responseInputItems, assistantOutputItems...)
-	case "tool":
+	case messages.MessageRoleTool:
 		responseInputItems = append(responseInputItems, responses.ResponseInputItemParamOfFunctionCallOutput(
 			message.ToolMessage.CallId,
 			message.ToolMessage.Output,
 		))
 	default:
-		panic("Unhandeled Message Role.")
+		panic(fmt.Sprintf("Unhandeled Message Role role=%s", message.Role))
 	}
 	return responseInputItems
 }

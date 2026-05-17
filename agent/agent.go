@@ -13,7 +13,8 @@ import (
 )
 
 type AgentState struct {
-	messages []messages.Message
+	systemMessages []messages.Message
+	messages       []messages.Message
 }
 
 type Agent struct {

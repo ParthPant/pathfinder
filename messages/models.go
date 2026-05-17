@@ -14,6 +14,7 @@ const (
 	MessageRoleHuman  MessageRole = "user"
 	MessageRoleAI     MessageRole = "assistant"
 	MessageRoleSystem MessageRole = "system"
+	MessageRoleTool   MessageRole = "tool"
 )
 
 type Message struct {
@@ -159,20 +160,6 @@ func (m *Message) OutputText() string {
 	return outputText.String()
 }
 
-func (m *Message) InputText() string {
-	var outputText strings.Builder
-	for _, output := range m.AiMessage.Output {
-		if output.Type == "message" {
-			for _, content := range output.OfMessage.Content {
-				if content.Type == "input_text" {
-					outputText.WriteString(content.OutputText)
-				}
-			}
-		}
-	}
-	return outputText.String()
-}
-
 // FIXME: Models are not returnign summary for some reason.
 func (m *Message) ReasoningSummary() string {
 	var outputText strings.Builder
@@ -196,4 +183,41 @@ func (m *Message) ReasoningContent() string {
 		}
 	}
 	return outputText.String()
+}
+
+func (m *Message) GetTextContent() string {
+	var sb strings.Builder
+
+	switch m.Role {
+	case MessageRoleHuman:
+		sb.WriteString(m.HumanMessage.Content.OfInputText)
+	case MessageRoleSystem:
+		sb.WriteString(m.SystemMessage.Content.OfInputText)
+	case MessageRoleTool:
+		sb.WriteString(m.ToolMessage.Output)
+	case MessageRoleAI:
+		for _, item := range m.AiMessage.Output {
+			switch item.Type {
+			case "message":
+				for _, content := range item.OfMessage.Content {
+					sb.WriteString(content.OutputText)
+					sb.WriteString(content.Refusal)
+				}
+			case "function_call":
+				// TODO: Should this only take the arugments.
+				// Primary usecase is to find token count.
+				// Are function name, call_id etc. significant?
+				sb.WriteString(item.OfFunctionCall.Arguments)
+			case "reasoning":
+				for _, summary := range item.OfReasoning.Summary {
+					sb.WriteString(summary.Text)
+				}
+				for _, content := range item.OfReasoning.Content {
+					sb.WriteString(content.Text)
+				}
+			}
+		}
+	}
+
+	return sb.String()
 }

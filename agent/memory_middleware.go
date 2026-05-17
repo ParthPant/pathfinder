@@ -31,7 +31,7 @@ type Memory struct {
 }
 
 func NewMemoryMiddleware(promptTemplate string, memoriesDir string, fsBackend backends.IFileSystemBackend) *MemoryMiddleware {
-	err := os.Mkdir(memoriesDir, 0744)
+	err := os.MkdirAll(memoriesDir, 0744)
 	if err != nil {
 		slog.Warn("Error while creating memories directory", "error", err)
 	}
@@ -72,10 +72,10 @@ func (m *MemoryMiddleware) BeforeAgent(ctx context.Context, state AgentState) (A
 	}
 	slog.Debug("Memory prompt assembled", "prompt", systemPrompt[:50])
 
-	for _, message := range state.messages {
+	for i, message := range state.messages {
 		if message.SystemMessage.Id == m.promptMessageId {
 			slog.Debug("Memory system prompt aleready present. Replacing with latest content.")
-			message = messages.NewTextMessage("system", systemPrompt, &m.promptMessageId)
+			state.messages[i] = messages.NewTextMessage("system", systemPrompt, &m.promptMessageId)
 			return state, nil
 		}
 	}

@@ -2,3 +2,4 @@
 pathfinder
 bin
 .pathfinder/
+build/

@@ -21,6 +21,9 @@ import (
 //go:embed prompts/memory.txt
 var memoryPrompt string
 
+//go:embed prompts/summarization.txt
+var summarizationPrompt string
+
 func main() {
 	godotenv.Load()
 
@@ -52,6 +55,16 @@ func main() {
 	memoryMiddleware := agent.NewMemoryMiddleware(memoryPrompt, ".pathfinder", fsBackend)
 	a.AddMiddleware(memoryMiddleware)
 
+	summaryLlmConfig := llms.LlmConfig{
+		BaseUrl:         os.Getenv("OPENROUTER_BASE_URL"),
+		APIKey:          os.Getenv("OPENROUTER_API_KEY"),
+		Model:           os.Getenv("SUMMARY_MODEL"),
+		MaxOutputTokens: 25000,
+	}
+	summaryLlm := llms.NewOpenAiLlm(summaryLlmConfig)
+	summarizeMiddleware := agent.NewSummarizationMiddleware(summaryLlm, summarizationPrompt, 90000, 10)
+	a.AddMiddleware(summarizeMiddleware)
+
 	_, err := a.StartSession()
 	if err != nil {
 		panic(err)
@@ -72,7 +85,7 @@ func main() {
 		}
 
 		a.UserInput(messages.NewTextMessage("user", userInput, nil))
-		ctx_t, cancel := context.WithTimeout(ctx, time.Second*60*5)
+		ctx_t, cancel := context.WithTimeout(ctx, time.Second*60*10)
 		defer cancel()
 
 		a.Run(ctx_t)

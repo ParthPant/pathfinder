@@ -11,7 +11,7 @@ import (
 
 func (agent *Agent) llmNode(ctx context.Context, state AgentState) (graph.ICommand[AgentState], error) {
 	// get conversation
-	messages := state.messages
+	messages := append(state.systemMessages, state.messages...)
 
 	slog.Debug("Conversation", "First Message", messages[0].OutputText())
 
