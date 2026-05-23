@@ -4,7 +4,8 @@ BUILD_DIR=build
 
 # Commands
 GO=go
-BUILD=$(GO) build
+TAGS ?= fts5
+BUILD = $(GO) build $(if $(TAGS),-tags=$(TAGS),)
 TEST=$(GO) test
 CLEAN=$(GO) clean
 RUN=./$(BUILD_DIR)/$(BINARY_NAME)

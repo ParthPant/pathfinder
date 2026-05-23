@@ -1,24 +1,20 @@
 package agent
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
-	"io/fs"
 	"log/slog"
-	"os"
-	"path/filepath"
 	"strings"
 	"text/template"
 	"time"
 
+	"github.com/ParthPant/pathfinder/agent/memory"
 	"github.com/ParthPant/pathfinder/backends"
 	"github.com/ParthPant/pathfinder/messages"
 	"github.com/ParthPant/pathfinder/tools"
 )
 
 type MemoryMiddleware struct {
-	backend         backends.IFileSystemBackend
+	memoryStore     memory.IMemoryStore
 	systemPrompt    string
 	memoriesDir     string
 	promptMessageId string
@@ -31,12 +27,13 @@ type Memory struct {
 }
 
 func NewMemoryMiddleware(promptTemplate string, memoriesDir string, fsBackend backends.IFileSystemBackend) *MemoryMiddleware {
-	err := os.MkdirAll(memoriesDir, 0744)
+	memStore, err := memory.NewFTSMemoryStore(memoriesDir)
 	if err != nil {
-		slog.Warn("Error while creating memories directory", "error", err)
+		slog.Error("Error while creating memory store", "error", err)
 	}
+
 	return &MemoryMiddleware{
-		backend:         fsBackend,
+		memoryStore:     memStore,
 		systemPrompt:    promptTemplate,
 		memoriesDir:     memoriesDir,
 		promptMessageId: "memory_middleware_sys_prompt",
@@ -44,45 +41,47 @@ func NewMemoryMiddleware(promptTemplate string, memoriesDir string, fsBackend ba
 }
 
 func (m *MemoryMiddleware) OnAttach(agent *Agent) error {
-	createMemoryToolDefinition, err := tools.NewFunctionDefinition(
+	if createMemoryToolDefinition, err := tools.NewFunctionDefinition(
 		"create_memory",
 		"Make a persistent memory entry for future reference.",
 		tools.ParamsFor[createMemoryInput](),
 		false,
 		m.MakeMemory,
-	)
-	if err != nil {
+	); err != nil {
+		return err
+	} else if err := agent.RegisterFunctionCall(createMemoryToolDefinition); err != nil {
 		return err
 	}
-	err = agent.RegisterFunctionCall(createMemoryToolDefinition)
-	return err
+
+	// if recallMemoryToolDefinition, err := tools.NewFunctionDefinition(
+	// 	"recall_memory",
+	// 	"Search memory for any stored information.",
+	// 	tools.ParamsFor[recallMemoryInput](),
+	// 	false,
+	// 	m.RecallMemory,
+	// ); err != nil {
+	// 	return err
+	// } else if err := agent.RegisterFunctionCall(recallMemoryToolDefinition); err != nil {
+	// 	return err
+	// }
+	return nil
 }
 
 func (m *MemoryMiddleware) BeforeAgent(ctx context.Context, state AgentState) (AgentState, error) {
-	slog.Debug("Running Memory Middleware.")
-	memories, err := m.loadMemoriesFromDir(m.memoriesDir)
-	if err != nil {
-		return state, err
-	}
-	slog.Debug("Memories Loaded", "entries", len(memories))
-
-	systemPrompt, err := m.assembleMemoryPrompt(memories)
-	if err != nil {
-		return state, err
-	}
-	slog.Debug("Memory prompt assembled", "prompt", systemPrompt[:50])
-
-	for i, message := range state.messages {
-		if message.SystemMessage.Id == m.promptMessageId {
-			slog.Debug("Memory system prompt aleready present. Replacing with latest content.")
-			state.messages[i] = messages.NewTextMessage("system", systemPrompt, &m.promptMessageId)
+	for _, sysMessage := range state.systemMessages {
+		if sysMessage.SystemMessage.Id == m.promptMessageId {
+			slog.Debug("Memory prompt already present in the conversation. Skipping retrieving memories.")
 			return state, nil
 		}
 	}
 
-	state.messages = append(state.messages, messages.NewTextMessage("system", systemPrompt, &m.promptMessageId))
-
-	return state, nil
+	if prompt, err := m.assembleMemoryPrompt(); err != nil {
+		slog.Error("Error while creating memory system prompt", "error", err)
+		return state, err
+	} else {
+		state.systemMessages = append(state.systemMessages, messages.NewTextMessage("system", prompt, &m.promptMessageId))
+		return state, nil
+	}
 }
 
 func (m *MemoryMiddleware) AfterAgent(ctx context.Context, state AgentState) (AgentState, error) {
@@ -98,10 +97,16 @@ func (m *MemoryMiddleware) AfterLlm(ctx context.Context, state AgentState) (Agen
 }
 
 type memoriesStruct struct {
-	Memories []Memory
+	Memories []memory.MemoryNote
 }
 
-func (m *MemoryMiddleware) assembleMemoryPrompt(memories []Memory) (string, error) {
+func (m *MemoryMiddleware) assembleMemoryPrompt() (string, error) {
+	memories, err := m.memoryStore.GetAll()
+	if err != nil {
+		slog.Error("Error while retrieving memories from store", "error", err)
+		return "", err
+	}
+
 	mem := memoriesStruct{
 		Memories: memories,
 	}
@@ -120,77 +125,33 @@ func (m *MemoryMiddleware) assembleMemoryPrompt(memories []Memory) (string, erro
 	return w.String(), nil
 }
 
-func (m *MemoryMiddleware) loadMemoriesFromDir(dir string) ([]Memory, error) {
-	slog.Debug("Loading Memories", "path", dir)
-	memories := make([]Memory, 0)
-
-	filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if d.IsDir() {
-			return nil
-		} else {
-			memories = append(memories, readMemoryFile(path)...)
-		}
-		return nil
-	})
-	return memories, nil
-}
-
-func readMemoryFile(path string) []Memory {
-	file, err := os.Open(path)
-	if err != nil {
-		slog.Warn("Error while reading memory file", "error", err)
-		return nil
-	}
-
-	memories := make([]Memory, 0)
-	scanner := bufio.NewScanner(file)
-
-	for scanner.Scan() {
-		var memory Memory
-		line := scanner.Bytes()
-		if err := json.Unmarshal(line, &memory); err != nil {
-			slog.Warn("Error unmarshalling memory", "error", err)
-			continue
-		}
-		memory.Source = path
-		memories = append(memories, memory)
-	}
-	return memories
-}
-
 type createMemoryInput struct {
-	Title   string `json:"title" tool:"Name of the memory,required"`
+	Name    string `json:"name" tool:"Name of the memory,required"`
 	Content string `json:"content" tool:"Content of the memory that should be persisted.,required"`
-	Type    string `json:"type" tool:"Type of memory,,user_preferences|skills|facts|workflows|events"`
+	Kind    string `json:"kind" tool:"Type of memory,,semantic|procedural|event"`
+	Tags    string `json:"tags" tool:"A comma separated list of tags you want to attached to this memory. Each tag must be a single word only."`
 }
 
 func (m *MemoryMiddleware) MakeMemory(ctx context.Context, params createMemoryInput) (any, error) {
-	memoryPath := filepath.Join(m.memoriesDir, params.Type)
-	memoryFile := filepath.Join(memoryPath, params.Title+".jsonl")
-
-	os.MkdirAll(memoryPath, 0744)
-
-	memory := Memory{
-		Source:            memoryFile,
-		CreatedAt:         time.Now(),
-		createMemoryInput: params,
+	tags := strings.Split(params.Tags, ",")
+	mem := memory.MemoryNote{
+		Name:    params.Name,
+		Content: params.Content,
+		Kind:    params.Kind,
+		Tags:    tags,
 	}
 
-	content, err := json.Marshal(memory)
-	if err != nil {
+	if err := m.memoryStore.Insert(mem); err != nil {
 		return nil, err
 	}
 
-	f, err := os.OpenFile(memoryFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
-	if err != nil {
-		slog.Warn("Error while opening memory file", "path", memoryFile, "error", err)
-		return nil, err
-	}
+	return "Successfully inserted memory", nil
+}
 
-	_, err = f.Write(content)
-	if err != nil {
-		slog.Warn("Error while writing to memory file", "path", memoryFile, "error", err)
-		return nil, err
-	}
-	return "Successfully written to memory", nil
+type recallMemoryInput struct {
+	Query string `json:"query" tool:"Query stirng for what you want to search in the memory."`
+}
+
+func (m *MemoryMiddleware) RecallMemory(ctx context.Context, params recallMemoryInput) (any, error) {
+	return m.memoryStore.Search(params.Query)
 }

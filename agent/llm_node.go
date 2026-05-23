@@ -13,8 +13,6 @@ func (agent *Agent) llmNode(ctx context.Context, state AgentState) (graph.IComma
 	// get conversation
 	messages := append(state.systemMessages, state.messages...)
 
-	slog.Debug("Conversation", "First Message", messages[0].OutputText())
-
 	// generate response
 	slog.Debug("Generating LLM Response.")
 	response, err := agent.llm.NewResponse(ctx, messages)

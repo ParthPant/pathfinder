@@ -1,10 +1,14 @@
 <agent_memory>
 {{range .Memories}}
 <memory_entry>
-    File: {{.Source}}
-    Title: {{.Title}}
-    Type: {{.Type}}
+    ---
+    Kind: {{.Kind}}
+    Name: {{.Name}}
+    Tags: {{.Tags}}
+    Path: {{.Path}}
+    ---
     {{.Content}}
+
 </memory_entry>
 {{end}}
 </agent_memory>
