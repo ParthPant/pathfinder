@@ -2,14 +2,13 @@ package agent
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"log/slog"
 
 	"github.com/ParthPant/pathfinder/graph"
 )
 
-func (agent *Agent) llmNode(ctx context.Context, state AgentState) (graph.ICommand[AgentState], error) {
+func (agent *Agent) llmNode(ctx context.Context, ch chan<- any, state AgentState) (graph.ICommand[AgentState], error) {
 	// get conversation
 	messages := append(state.systemMessages, state.messages...)
 
@@ -20,9 +19,10 @@ func (agent *Agent) llmNode(ctx context.Context, state AgentState) (graph.IComma
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Reasoning: %s\n", response.ReasoningContent())
-	if len(response.OutputText()) > 0 {
-		fmt.Printf("AI: %s\n", response.OutputText())
+	select {
+	case ch <- EventAIResponse{Message: response}:
+	default:
+		slog.Warn("Channel buffer is full. Event dropped.")
 	}
 
 	state.messages = append(state.messages, response)

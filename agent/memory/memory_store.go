@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -28,7 +29,7 @@ type IMemoryStore interface {
 }
 
 type MemoryNote struct {
-	id int64
+	id string
 
 	Kind    string   `json:"kind"`
 	Name    string   `json:"name"`
@@ -75,6 +76,11 @@ func NewFTSMemoryStore(path string) (*FTSMemoryStore, error) {
 
 func (store *FTSMemoryStore) Insert(m MemoryNote) error {
 	m.Path = filepath.Join(store.memoryPath, m.Kind, m.Name+".md")
+	if id, err := uuid.NewV7(); err != nil {
+		return err
+	} else {
+		m.id = id.String()
+	}
 	m.CreatedAt = time.Now()
 	m.version = 1
 

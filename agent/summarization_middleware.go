@@ -28,15 +28,15 @@ func (m *SummarizationMiddleware) OnAttach(agent *Agent) error {
 	return nil
 }
 
-func (m *SummarizationMiddleware) BeforeAgent(_ context.Context, state AgentState) (AgentState, error) {
+func (m *SummarizationMiddleware) BeforeAgent(_ context.Context, ch chan<- any, state AgentState) (AgentState, error) {
 	return state, nil
 }
 
-func (m *SummarizationMiddleware) AfterAgent(_ context.Context, state AgentState) (AgentState, error) {
+func (m *SummarizationMiddleware) AfterAgent(_ context.Context, ch chan<- any, state AgentState) (AgentState, error) {
 	return state, nil
 }
 
-func (m *SummarizationMiddleware) BeforeLlm(ctx context.Context, state AgentState) (AgentState, error) {
+func (m *SummarizationMiddleware) BeforeLlm(ctx context.Context, ch chan<- any, state AgentState) (AgentState, error) {
 	predictedTokens := m.estimateTokens(state.messages)
 
 	if predictedTokens >= m.tokenThreshold {
@@ -50,7 +50,7 @@ func (m *SummarizationMiddleware) BeforeLlm(ctx context.Context, state AgentStat
 	return state, nil
 }
 
-func (m *SummarizationMiddleware) AfterLlm(_ context.Context, state AgentState) (AgentState, error) {
+func (m *SummarizationMiddleware) AfterLlm(_ context.Context, ch chan<- any, state AgentState) (AgentState, error) {
 	return state, nil
 }
 

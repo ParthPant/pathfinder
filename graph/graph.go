@@ -2,14 +2,13 @@ package graph
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 
 	"github.com/ParthPant/pathfinder/stores"
 )
 
 type IGraph[T any] interface {
-	Run(context.Context) error
+	Run(context.Context) (<-chan any, <-chan error)
 	SetState(T) error
 	SetEntryNode(string)
 	SetNode(string)
@@ -76,26 +75,37 @@ func (g *BaseGraph[T]) GetState() T {
 	return g.state
 }
 
-func (g *BaseGraph[T]) Run(ctx context.Context) error {
+func (g *BaseGraph[T]) Run(ctx context.Context) (<-chan any, <-chan error) {
 	// TODO: Detect cycles.
 
-	for i := 0; i <= g.maxIterations; i++ {
-		cmd, err := g.nodes[g.CurrentNode()](ctx, g.state)
-		if err != nil {
-			return err
-		}
+	ch := make(chan any, 10)
+	cherr := make(chan error, 1)
 
-		if err := cmd.ApplyTo(g); err != nil {
-			panic(err)
-		}
+	go func() {
+		defer close(ch)
+		defer close(cherr)
 
-		if g.completed {
-			slog.Debug("Resetting graph to entry point.")
-			g.Reset()
-			return nil
+		for i := 0; i <= g.maxIterations; i++ {
+			cmd, err := g.nodes[g.CurrentNode()](ctx, ch, g.state)
+			if err != nil {
+				cherr <- err
+				return
+			}
+
+			if err := cmd.ApplyTo(g); err != nil {
+				cherr <- err
+				return
+			}
+
+			if g.completed {
+				slog.Debug("Resetting graph to entry point.")
+				g.Reset()
+				return
+			}
 		}
-	}
-	return errors.New("Max graph iterations reached.")
+	}()
+
+	return ch, cherr
 }
 
 func (g *BaseGraph[T]) HasNodeName(n string) bool {

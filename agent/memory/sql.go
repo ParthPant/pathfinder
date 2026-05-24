@@ -1,10 +1,10 @@
 package memory
 
 const CREATE_METADATA_TABLE = `CREATE TABLE IF NOT EXISTS memories (
-    id INTEGER PRIMARY KEY,
+    id TEXT PRIMARY KEY,
 
     kind TEXT NOT NULL,
-	name TEST NOT NULL,
+	name TEXT NOT NULL,
     content TEXT NOT NULL,
     tags TEXT,                       -- JSON array or comma-separated
 

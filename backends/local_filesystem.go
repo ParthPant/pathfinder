@@ -132,16 +132,19 @@ func (lfs *LocalFileSystemBackend) Grep(ctx context.Context, input GrepInput) (G
 
 	slog.Debug("Grep Files", "files", matches)
 
-	re := regexp.MustCompile(input.Pattern)
-	grepMatches := make([]GrepMatch, 0)
-	for _, matchedPath := range matches {
-		grepMatches = append(grepMatches, lfs.grep(matchedPath, re)...)
-	}
+	if re, err := regexp.Compile(input.Pattern); err != nil {
+		return GrepResult{}, err
+	} else {
+		grepMatches := make([]GrepMatch, 0)
+		for _, matchedPath := range matches {
+			grepMatches = append(grepMatches, lfs.grep(matchedPath, re)...)
+		}
 
-	return GrepResult{
-		grepMatches,
-		nil,
-	}, nil
+		return GrepResult{
+			grepMatches,
+			nil,
+		}, nil
+	}
 }
 
 func (lfs *LocalFileSystemBackend) Glob(ctx context.Context, input GlobInput) (GlobResult, error) {

@@ -6,8 +6,8 @@ import (
 
 type IMiddleware[T any] interface {
 	OnAttach(*Agent) error
-	BeforeAgent(context.Context, T) (T, error)
-	AfterAgent(context.Context, T) (T, error)
-	BeforeLlm(context.Context, T) (T, error)
-	AfterLlm(context.Context, T) (T, error)
+	BeforeAgent(context.Context, chan<- any, T) (T, error)
+	AfterAgent(context.Context, chan<- any, T) (T, error)
+	BeforeLlm(context.Context, chan<- any, T) (T, error)
+	AfterLlm(context.Context, chan<- any, T) (T, error)
 }

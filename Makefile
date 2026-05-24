@@ -1,5 +1,6 @@
 # Variables
 BINARY_NAME=pathfinder
+TUI_BINARY_NAME=pathfinder-tui
 BUILD_DIR=build
 
 # Commands
@@ -9,22 +10,30 @@ BUILD = $(GO) build $(if $(TAGS),-tags=$(TAGS),)
 TEST=$(GO) test
 CLEAN=$(GO) clean
 RUN=./$(BUILD_DIR)/$(BINARY_NAME)
+RUN_TUI=./$(BUILD_DIR)/$(TUI_BINARY_NAME)
 
-.PHONY: all build run test clean help
+.PHONY: all build run run-tui test clean help
 
 all: build
 
-## build: Build the project and put the binary in the build directory
+## build: Build the project and put the binaries in the build directory
 build:
-	@echo "Building $(BINARY_NAME)..."
+	@echo "Building $(BINARY_NAME) and $(TUI_BINARY_NAME)..."
 	@mkdir -p $(BUILD_DIR)
 	$(BUILD) -o $(BUILD_DIR)/$(BINARY_NAME) .
-	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)"
+	$(BUILD) -o $(BUILD_DIR)/$(TUI_BINARY_NAME) ./cmd/tui
+	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME), $(BUILD_DIR)/$(TUI_BINARY_NAME)"
 
-## run: Build and run the project
+## run: Run the main application
 run: build
-	@echo "Running $(BINARY_NAME)..."
-	$(RUN)
+	@echo "Running main.go..."
+	$(BUILD_DIR)/$(BINARY_NAME)
+
+
+## run-tui: Run the tui applicaiton
+run-tui: build
+	@echo "Running TUI"
+	$(BUILD_DIR)/$(TUI_BINARY_NAME)
 
 ## test: Run all tests in the project
 test:
@@ -43,4 +52,4 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Targets:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | sort | awk 'BEGIN {FS = \":.*?## \"}; {printf \"  \\033[36m%-15s\\033[0m %s\\n\", $$1, $$2}'

@@ -3,3 +3,4 @@ pathfinder
 bin
 .pathfinder/
 build/
+*.log

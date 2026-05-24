@@ -38,7 +38,7 @@ func NewAgent(llm llms.IToolCallingLlm, toolExecutor tools.IToolExecutor, sessio
 		"afterAgentNode":  agent.afterAgentNode,
 	}
 
-	base := graph.NewBaseGraph(AgentState{}, nodes, "beforeAgentNode", 100, sessionRepo)
+	base := graph.NewBaseGraph(AgentState{}, nodes, "beforeAgentNode", 500, sessionRepo)
 
 	agent.BaseGraph = base
 	agent.llm = llm

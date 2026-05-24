@@ -3,31 +3,35 @@ package main
 import (
 	"bufio"
 	"context"
-	_ "embed"
 	"fmt"
 	"log/slog"
 	"os"
-	"time"
+	"strconv"
 
 	"github.com/ParthPant/pathfinder/agent"
 	"github.com/ParthPant/pathfinder/backends"
 	"github.com/ParthPant/pathfinder/llms"
 	"github.com/ParthPant/pathfinder/messages"
+	"github.com/ParthPant/pathfinder/prompts"
 	"github.com/ParthPant/pathfinder/stores"
 	"github.com/ParthPant/pathfinder/tools"
 	"github.com/joho/godotenv"
 )
 
-//go:embed prompts/memory.txt
-var memoryPrompt string
-
-//go:embed prompts/summarization.txt
-var summarizationPrompt string
-
 func main() {
 	godotenv.Load()
 
-	slog.SetLogLoggerLevel(slog.Level(getEnvAsInt("LOG_LEVEL")))
+	logFile, err := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		panic(err)
+	}
+	logLevel := slog.Level(getEnvAsInt("LOG_LEVEL"))
+	handler := slog.NewTextHandler(logFile, &slog.HandlerOptions{
+		Level: logLevel,
+	})
+	logger := slog.New(handler)
+
+	slog.SetDefault(logger)
 
 	config := llms.LlmConfig{
 		BaseUrl:         os.Getenv("OPENROUTER_BASE_URL"),
@@ -52,7 +56,7 @@ func main() {
 	a.RegisterFunctionCall(tools.InternetSearchTool)
 	a.RegisterFunctionCall(tools.OpenURLTool)
 
-	memoryMiddleware := agent.NewMemoryMiddleware(memoryPrompt, ".pathfinder", fsBackend)
+	memoryMiddleware := agent.NewMemoryMiddleware(prompts.MemoryPrompt, ".pathfinder", fsBackend)
 	a.AddMiddleware(memoryMiddleware)
 
 	summaryLlmConfig := llms.LlmConfig{
@@ -62,10 +66,10 @@ func main() {
 		MaxOutputTokens: 25000,
 	}
 	summaryLlm := llms.NewOpenAiLlm(summaryLlmConfig)
-	summarizeMiddleware := agent.NewSummarizationMiddleware(summaryLlm, summarizationPrompt, 90000, 10)
+	summarizeMiddleware := agent.NewSummarizationMiddleware(summaryLlm, prompts.SummarizationPrompt, 90000, 10)
 	a.AddMiddleware(summarizeMiddleware)
 
-	_, err := a.StartSession()
+	_, err = a.StartSession()
 	if err != nil {
 		panic(err)
 	}
@@ -73,21 +77,58 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	ctx := context.Background()
 	for {
-		var userInput string
-
 		fmt.Print("User: ")
+
+		var userInput string
 		if scanner.Scan() {
 			userInput = scanner.Text()
 		}
-
 		if userInput == "exit" {
 			break
 		}
 
-		a.UserInput(messages.NewTextMessage("user", userInput, nil))
-		ctx_t, cancel := context.WithTimeout(ctx, time.Second*60*10)
-		defer cancel()
+		if userInput == "" {
+			continue
+		}
 
-		a.Run(ctx_t)
+		a.UserInput(messages.NewTextMessage("user", userInput, nil))
+		ch, cherr := a.Run(ctx)
+
+		for ch != nil || cherr != nil {
+			select {
+			case e, ok := <-ch:
+				if !ok {
+					ch = nil
+				}
+				printEvent(e)
+			case err, ok := <-cherr:
+				if err != nil {
+					slog.Error("Error during Agent Run", "error", err)
+					cherr = nil
+				}
+
+				if !ok {
+					ch = nil
+					cherr = nil
+				}
+			}
+		}
 	}
+}
+
+func printEvent(e any) {
+	switch v := e.(type) {
+	case agent.EventAIResponse:
+		fmt.Printf("AI: %s\n", v.Message.OutputText())
+	case agent.EventToolCall:
+		fmt.Printf("AI [toolCall]: %s\n", v.Call.Name)
+	case agent.EventToolResponse:
+		fmt.Printf("Tool: %s\n", v.Message.OutputText())
+	}
+}
+
+func getEnvAsInt(name string) int {
+	str := os.Getenv(name)
+	i, _ := strconv.Atoi(str)
+	return i
 }

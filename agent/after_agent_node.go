@@ -9,9 +9,9 @@ import (
 	"github.com/ParthPant/pathfinder/graph"
 )
 
-func (agent *Agent) afterAgentNode(ctx context.Context, state AgentState) (graph.ICommand[AgentState], error) {
+func (agent *Agent) afterAgentNode(ctx context.Context, ch chan<- any, state AgentState) (graph.ICommand[AgentState], error) {
 	for _, mware := range slices.Backward(agent.middlewares) {
-		newState, err := mware.AfterAgent(ctx, state)
+		newState, err := mware.AfterAgent(ctx, ch, state)
 		if err != nil {
 			slog.Error("Error running middleware", "middleware", reflect.TypeOf(mware).Name(), "error", err)
 		}

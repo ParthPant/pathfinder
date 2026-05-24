@@ -6,4 +6,4 @@ import "context"
 // 	Run(context.Context) (ICommand[T], error)
 // }
 
-type Node[T any] = func(context.Context, T) (ICommand[T], error)
+type Node[T any] = func(context.Context, chan<- any, T) (ICommand[T], error)

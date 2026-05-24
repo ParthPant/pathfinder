@@ -67,7 +67,7 @@ func (m *MemoryMiddleware) OnAttach(agent *Agent) error {
 	return nil
 }
 
-func (m *MemoryMiddleware) BeforeAgent(ctx context.Context, state AgentState) (AgentState, error) {
+func (m *MemoryMiddleware) BeforeAgent(ctx context.Context, ch chan<- any, state AgentState) (AgentState, error) {
 	for _, sysMessage := range state.systemMessages {
 		if sysMessage.SystemMessage.Id == m.promptMessageId {
 			slog.Debug("Memory prompt already present in the conversation. Skipping retrieving memories.")
@@ -84,15 +84,15 @@ func (m *MemoryMiddleware) BeforeAgent(ctx context.Context, state AgentState) (A
 	}
 }
 
-func (m *MemoryMiddleware) AfterAgent(ctx context.Context, state AgentState) (AgentState, error) {
+func (m *MemoryMiddleware) AfterAgent(ctx context.Context, ch chan<- any, state AgentState) (AgentState, error) {
 	return state, nil
 }
 
-func (m *MemoryMiddleware) BeforeLlm(ctx context.Context, state AgentState) (AgentState, error) {
+func (m *MemoryMiddleware) BeforeLlm(ctx context.Context, ch chan<- any, state AgentState) (AgentState, error) {
 	return state, nil
 }
 
-func (m *MemoryMiddleware) AfterLlm(ctx context.Context, state AgentState) (AgentState, error) {
+func (m *MemoryMiddleware) AfterLlm(ctx context.Context, ch chan<- any, state AgentState) (AgentState, error) {
 	return state, nil
 }
 
@@ -126,19 +126,18 @@ func (m *MemoryMiddleware) assembleMemoryPrompt() (string, error) {
 }
 
 type createMemoryInput struct {
-	Name    string `json:"name" tool:"Name of the memory,required"`
-	Content string `json:"content" tool:"Content of the memory that should be persisted.,required"`
-	Kind    string `json:"kind" tool:"Type of memory,,semantic|procedural|event"`
-	Tags    string `json:"tags" tool:"A comma separated list of tags you want to attached to this memory. Each tag must be a single word only."`
+	Name    string   `json:"name" tool:"Name of the memory,required"`
+	Content string   `json:"content" tool:"Content of the memory that should be persisted.,required"`
+	Kind    string   `json:"kind" tool:"Type of memory,,semantic|procedural|event"`
+	Tags    []string `json:"tags" tool:"A list of tags you want to attached to this memory. Each tag must be a single word only."`
 }
 
 func (m *MemoryMiddleware) MakeMemory(ctx context.Context, params createMemoryInput) (any, error) {
-	tags := strings.Split(params.Tags, ",")
 	mem := memory.MemoryNote{
 		Name:    params.Name,
 		Content: params.Content,
 		Kind:    params.Kind,
-		Tags:    tags,
+		Tags:    params.Tags,
 	}
 
 	if err := m.memoryStore.Insert(mem); err != nil {
