@@ -86,6 +86,16 @@ TAVILY_API_KEY=your-tavily-api-key   # Required for internet tools
 LOG_LEVEL=0                           # 0=Debug, 1=Info, 2=Warn, 3=Error
 ```
 
+## Running the Project
+
+You can use `make` to manage the project:
+
+- `make build`: Build the project and its TUI component.
+- `make run`: Build and run the main CLI application.
+- `make run-tui`: Build and run the Terminal User Interface (TUI).
+- `make test`: Run the project's test suite.
+- `make clean`: Clean up build artifacts.
+
 ## Roadmap – Future Features
 
 Here are some features that would be nice to have:
