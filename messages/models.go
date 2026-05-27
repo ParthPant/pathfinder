@@ -160,7 +160,7 @@ func (m *Message) OutputText() string {
 	return outputText.String()
 }
 
-// FIXME: Models are not returnign summary for some reason.
+// FIXME: Models are not returning summary for some reason.
 func (m *Message) ReasoningSummary() string {
 	var outputText strings.Builder
 	for _, output := range m.AiMessage.Output {

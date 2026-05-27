@@ -9,7 +9,7 @@ import (
 	"github.com/ParthPant/pathfinder/graph"
 )
 
-func (agent *Agent) afterAgentNode(ctx context.Context, ch chan<- any, state AgentState) (graph.ICommand[AgentState], error) {
+func (agent *Agent) afterAgentNode(ctx context.Context, ch chan<- graph.RunEvent[AgentEvent], state AgentState) (graph.ICommand[AgentState, AgentEvent], error) {
 	for _, mware := range slices.Backward(agent.middlewares) {
 		newState, err := mware.AfterAgent(ctx, ch, state)
 		if err != nil {
@@ -18,5 +18,5 @@ func (agent *Agent) afterAgentNode(ctx context.Context, ch chan<- any, state Age
 		state = newState
 	}
 
-	return graph.NewExitCommand[AgentState](), nil
+	return graph.NewExitCommand[AgentState, AgentEvent](), nil
 }

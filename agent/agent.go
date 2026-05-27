@@ -18,7 +18,7 @@ type AgentState struct {
 }
 
 type Agent struct {
-	graph.BaseGraph[AgentState]
+	graph.BaseGraph[AgentState, AgentEvent]
 	llm              llms.IToolCallingLlm
 	toolExecutor     tools.IToolExecutor
 	executionBackend backends.IExecutionBackend
@@ -29,7 +29,7 @@ type Agent struct {
 func NewAgent(llm llms.IToolCallingLlm, toolExecutor tools.IToolExecutor, sessionRepo stores.IStore[AgentState]) *Agent {
 	var agent Agent
 
-	nodes := map[string]graph.Node[AgentState]{
+	nodes := map[string]graph.Node[AgentState, AgentEvent]{
 		"beforeAgentNode": agent.beforeAgentNode,
 		"beforeLlmNode":   agent.beforeLlmNode,
 		"llmNode":         agent.llmNode,

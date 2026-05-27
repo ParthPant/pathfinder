@@ -9,7 +9,7 @@ import (
 	"github.com/ParthPant/pathfinder/graph"
 )
 
-func (agent *Agent) afterLlmNode(ctx context.Context, ch chan<- any, state AgentState) (graph.ICommand[AgentState], error) {
+func (agent *Agent) afterLlmNode(ctx context.Context, ch chan<- graph.RunEvent[AgentEvent], state AgentState) (graph.ICommand[AgentState, AgentEvent], error) {
 	for _, mware := range slices.Backward(agent.middlewares) {
 		newState, err := mware.AfterLlm(ctx, ch, state)
 		if err != nil {
@@ -22,10 +22,10 @@ func (agent *Agent) afterLlmNode(ctx context.Context, ch chan<- any, state Agent
 	// TODO: Add retry logic, if llm response is corrupt.
 	if lastMessage.HasFunctionCalls() {
 		slog.Debug("Directing to toolCallNode.")
-		return graph.NewCommand("toolNode", state), nil
+		return graph.NewCommand[AgentState, AgentEvent]("toolNode", state), nil
 	} else {
 		// end if no tool calls
 		slog.Debug("No tool calls in response.")
-		return graph.NewCommand("afterAgentNode", state), nil
+		return graph.NewCommand[AgentState, AgentEvent]("afterAgentNode", state), nil
 	}
 }

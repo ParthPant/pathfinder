@@ -7,7 +7,7 @@ import (
 	"github.com/ParthPant/pathfinder/graph"
 )
 
-func (agent *Agent) toolNode(ctx context.Context, ch chan<- any, state AgentState) (graph.ICommand[AgentState], error) {
+func (agent *Agent) toolNode(ctx context.Context, ch chan<- graph.RunEvent[AgentEvent], state AgentState) (graph.ICommand[AgentState, AgentEvent], error) {
 	messages := state.messages
 
 	lastMessage := messages[len(messages)-1]
@@ -15,9 +15,7 @@ func (agent *Agent) toolNode(ctx context.Context, ch chan<- any, state AgentStat
 		slog.Info("Making FunctionCall", "call", call)
 
 		select {
-		case ch <- EventToolCall{
-			call,
-		}:
+		case ch <- graph.NewEvent(NewToolCallEvent(call)):
 		default:
 			slog.Warn("Channel buffer is full. Event dropped.")
 		}
@@ -31,13 +29,11 @@ func (agent *Agent) toolNode(ctx context.Context, ch chan<- any, state AgentStat
 		state.messages = append(state.messages, toolMessage)
 
 		select {
-		case ch <- EventToolResponse{
-			toolMessage,
-		}:
+		case ch <- graph.NewEvent(NewToolResponseEvent(toolMessage)):
 		default:
 			slog.Warn("Channel buffer is full. Event dropped.")
 		}
 	}
 
-	return graph.NewCommand("beforeLlmNode", state), nil
+	return graph.NewCommand[AgentState, AgentEvent]("beforeLlmNode", state), nil
 }

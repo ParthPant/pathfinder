@@ -8,7 +8,7 @@ import (
 	"github.com/ParthPant/pathfinder/graph"
 )
 
-func (agent *Agent) llmNode(ctx context.Context, ch chan<- any, state AgentState) (graph.ICommand[AgentState], error) {
+func (agent *Agent) llmNode(ctx context.Context, ch chan<- graph.RunEvent[AgentEvent], state AgentState) (graph.ICommand[AgentState, AgentEvent], error) {
 	// get conversation
 	messages := append(state.systemMessages, state.messages...)
 
@@ -20,12 +20,12 @@ func (agent *Agent) llmNode(ctx context.Context, ch chan<- any, state AgentState
 	}
 
 	select {
-	case ch <- EventAIResponse{Message: response}:
+	case ch <- graph.NewEvent(NewAiResponseEvent(response)):
 	default:
 		slog.Warn("Channel buffer is full. Event dropped.")
 	}
 
 	state.messages = append(state.messages, response)
 
-	return graph.NewCommand("afterLlmNode", state), nil
+	return graph.NewCommand[AgentState, AgentEvent]("afterLlmNode", state), nil
 }

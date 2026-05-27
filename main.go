@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/ParthPant/pathfinder/agent"
 	"github.com/ParthPant/pathfinder/backends"
@@ -92,38 +93,39 @@ func main() {
 		}
 
 		a.UserInput(messages.NewTextMessage("user", userInput, nil))
-		ch, cherr := a.Run(ctx)
+		tctx, cancel := context.WithTimeout(ctx, 15*60*time.Second)
+		defer cancel()
 
-		for ch != nil || cherr != nil {
-			select {
-			case e, ok := <-ch:
-				if !ok {
-					ch = nil
-				}
-				printEvent(e)
-			case err, ok := <-cherr:
-				if err != nil {
-					slog.Error("Error during Agent Run", "error", err)
-					cherr = nil
-				}
-
-				if !ok {
-					ch = nil
-					cherr = nil
-				}
+		ch := a.Run(tctx)
+		for e := range ch {
+			if e.Err != nil {
+				fmt.Printf("Error while running Agent: %s\n", e.Err.Error())
+			} else {
+				printEvent(e.Value)
 			}
 		}
 	}
 }
 
-func printEvent(e any) {
-	switch v := e.(type) {
-	case agent.EventAIResponse:
-		fmt.Printf("AI: %s\n", v.Message.OutputText())
-	case agent.EventToolCall:
-		fmt.Printf("AI [toolCall]: %s\n", v.Call.Name)
-	case agent.EventToolResponse:
-		fmt.Printf("Tool: %s\n", v.Message.OutputText())
+func printEvent(e *agent.AgentEvent) {
+	switch e.Type {
+	case agent.AIRESP:
+		msg := e.OfAiResponse.Message
+		reasoning := msg.ReasoningContent()
+		if reasoning != "" {
+			fmt.Printf("AI (reasoning): %s\n", reasoning)
+		}
+		output := msg.OutputText()
+		if output != "" {
+			fmt.Printf("AI: %s\n", output)
+		}
+	case agent.TOOLCALL:
+		fmt.Printf("AI [toolCall]: %s\n", e.OfToolCall.Call.Name)
+	case agent.TOOLRESP:
+		fmt.Printf("Tool Response: %s\n", e.OfToolResponse.Message.OutputText())
+	case agent.AGENTERR:
+		fmt.Printf("Agent Error: %s\n", e.OfError.Err.Error())
+	default:
 	}
 }
 

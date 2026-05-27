@@ -9,6 +9,7 @@ import (
 
 	"github.com/ParthPant/pathfinder/agent/memory"
 	"github.com/ParthPant/pathfinder/backends"
+	"github.com/ParthPant/pathfinder/graph"
 	"github.com/ParthPant/pathfinder/messages"
 	"github.com/ParthPant/pathfinder/tools"
 )
@@ -67,7 +68,7 @@ func (m *MemoryMiddleware) OnAttach(agent *Agent) error {
 	return nil
 }
 
-func (m *MemoryMiddleware) BeforeAgent(ctx context.Context, ch chan<- any, state AgentState) (AgentState, error) {
+func (m *MemoryMiddleware) BeforeAgent(ctx context.Context, ch chan<- graph.RunEvent[AgentEvent], state AgentState) (AgentState, error) {
 	for _, sysMessage := range state.systemMessages {
 		if sysMessage.SystemMessage.Id == m.promptMessageId {
 			slog.Debug("Memory prompt already present in the conversation. Skipping retrieving memories.")
@@ -84,15 +85,15 @@ func (m *MemoryMiddleware) BeforeAgent(ctx context.Context, ch chan<- any, state
 	}
 }
 
-func (m *MemoryMiddleware) AfterAgent(ctx context.Context, ch chan<- any, state AgentState) (AgentState, error) {
+func (m *MemoryMiddleware) AfterAgent(ctx context.Context, ch chan<- graph.RunEvent[AgentEvent], state AgentState) (AgentState, error) {
 	return state, nil
 }
 
-func (m *MemoryMiddleware) BeforeLlm(ctx context.Context, ch chan<- any, state AgentState) (AgentState, error) {
+func (m *MemoryMiddleware) BeforeLlm(ctx context.Context, ch chan<- graph.RunEvent[AgentEvent], state AgentState) (AgentState, error) {
 	return state, nil
 }
 
-func (m *MemoryMiddleware) AfterLlm(ctx context.Context, ch chan<- any, state AgentState) (AgentState, error) {
+func (m *MemoryMiddleware) AfterLlm(ctx context.Context, ch chan<- graph.RunEvent[AgentEvent], state AgentState) (AgentState, error) {
 	return state, nil
 }
 

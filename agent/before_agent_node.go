@@ -8,7 +8,7 @@ import (
 	"github.com/ParthPant/pathfinder/graph"
 )
 
-func (agent *Agent) beforeAgentNode(ctx context.Context, ch chan<- any, state AgentState) (graph.ICommand[AgentState], error) {
+func (agent *Agent) beforeAgentNode(ctx context.Context, ch chan<- graph.RunEvent[AgentEvent], state AgentState) (graph.ICommand[AgentState, AgentEvent], error) {
 	for _, mware := range agent.middlewares {
 		newState, err := mware.BeforeAgent(ctx, ch, state)
 		if err != nil {
@@ -17,5 +17,5 @@ func (agent *Agent) beforeAgentNode(ctx context.Context, ch chan<- any, state Ag
 		state = newState
 	}
 
-	return graph.NewCommand("beforeLlmNode", state), nil
+	return graph.NewCommand[AgentState, AgentEvent]("beforeLlmNode", state), nil
 }

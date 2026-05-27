@@ -7,8 +7,8 @@ import (
 	"github.com/ParthPant/pathfinder/stores"
 )
 
-type IGraph[T any] interface {
-	Run(context.Context) (<-chan any, <-chan error)
+type IGraph[T any, E any] interface {
+	Run(context.Context) <-chan RunEvent[E]
 	SetState(T) error
 	SetEntryNode(string)
 	SetNode(string)
@@ -17,10 +17,10 @@ type IGraph[T any] interface {
 	HasNodeName(string) bool
 }
 
-type BaseGraph[T any] struct {
+type BaseGraph[T any, E any] struct {
 	state         T
 	currentNode   *string
-	nodes         map[string]Node[T]
+	nodes         map[string]Node[T, E]
 	completed     bool
 	maxIterations int
 	entryNode     string
@@ -28,8 +28,24 @@ type BaseGraph[T any] struct {
 	store         stores.IStore[T]
 }
 
-func NewBaseGraph[T any](state T, nodes map[string]Node[T], entryNode string, maxIterations int, store stores.IStore[T]) BaseGraph[T] {
-	return BaseGraph[T]{
+type RunEvent[E any] struct {
+	Value *E
+	Err   error
+}
+
+func NewEvent[E any](v *E) RunEvent[E] {
+	return RunEvent[E]{
+		Value: v,
+		Err:   nil,
+	}
+}
+
+func NewGraphErrorEvent[E any](e error) RunEvent[E] {
+	return RunEvent[E]{Value: nil, Err: e}
+}
+
+func NewBaseGraph[T any, E any](state T, nodes map[string]Node[T, E], entryNode string, maxIterations int, store stores.IStore[T]) BaseGraph[T, E] {
+	return BaseGraph[T, E]{
 		state:         state,
 		currentNode:   nil,
 		nodes:         nodes,
@@ -40,7 +56,7 @@ func NewBaseGraph[T any](state T, nodes map[string]Node[T], entryNode string, ma
 	}
 }
 
-func (g *BaseGraph[T]) CurrentNode() string {
+func (g *BaseGraph[T, E]) CurrentNode() string {
 	if g.currentNode == nil {
 		return g.entryNode
 	} else {
@@ -48,52 +64,50 @@ func (g *BaseGraph[T]) CurrentNode() string {
 	}
 }
 
-func (g *BaseGraph[T]) SetNode(n string) {
+func (g *BaseGraph[T, E]) SetNode(n string) {
 	g.currentNode = &n
 }
 
-func (g *BaseGraph[T]) SetEntryNode(n string) {
+func (g *BaseGraph[T, E]) SetEntryNode(n string) {
 	g.entryNode = n
 }
 
-func (g *BaseGraph[T]) SetState(newState T) error {
+func (g *BaseGraph[T, E]) SetState(newState T) error {
 	g.state = newState
 	g.store.SaveState(g.sessionId, g.state)
 	return nil
 }
 
-func (g *BaseGraph[T]) SetCompleted() {
+func (g *BaseGraph[T, E]) SetCompleted() {
 	g.completed = true
 }
 
-func (g *BaseGraph[T]) Reset() {
+func (g *BaseGraph[T, E]) Reset() {
 	g.completed = false
 	g.currentNode = nil
 }
 
-func (g *BaseGraph[T]) GetState() T {
+func (g *BaseGraph[T, E]) GetState() T {
 	return g.state
 }
 
-func (g *BaseGraph[T]) Run(ctx context.Context) (<-chan any, <-chan error) {
+func (g *BaseGraph[T, E]) Run(ctx context.Context) <-chan RunEvent[E] {
 	// TODO: Detect cycles.
 
-	ch := make(chan any, 10)
-	cherr := make(chan error, 1)
+	ch := make(chan RunEvent[E], 10)
 
 	go func() {
 		defer close(ch)
-		defer close(cherr)
 
 		for i := 0; i <= g.maxIterations; i++ {
 			cmd, err := g.nodes[g.CurrentNode()](ctx, ch, g.state)
 			if err != nil {
-				cherr <- err
+				ch <- NewGraphErrorEvent[E](err)
 				return
 			}
 
 			if err := cmd.ApplyTo(g); err != nil {
-				cherr <- err
+				ch <- NewGraphErrorEvent[E](err)
 				return
 			}
 
@@ -105,17 +119,17 @@ func (g *BaseGraph[T]) Run(ctx context.Context) (<-chan any, <-chan error) {
 		}
 	}()
 
-	return ch, cherr
+	return ch
 }
 
-func (g *BaseGraph[T]) HasNodeName(n string) bool {
+func (g *BaseGraph[T, E]) HasNodeName(n string) bool {
 	if _, ok := g.nodes[n]; ok {
 		return true
 	}
 	return false
 }
 
-func (g *BaseGraph[T]) NewSession() (string, error) {
+func (g *BaseGraph[T, E]) NewSession() (string, error) {
 	id, err := g.store.NewSession()
 	if err != nil {
 		return "", err

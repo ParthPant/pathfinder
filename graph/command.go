@@ -5,16 +5,16 @@ import (
 	"log/slog"
 )
 
-type ICommand[T any] interface {
-	ApplyTo(IGraph[T]) error
+type ICommand[T any, E any] interface {
+	ApplyTo(IGraph[T, E]) error
 }
 
-type Command[T any] struct {
+type Command[T any, E any] struct {
 	Goto     string
 	NewState T
 }
 
-func (c *Command[T]) ApplyTo(g IGraph[T]) error {
+func (c *Command[T, E]) ApplyTo(g IGraph[T, E]) error {
 	slog.Debug("Apply Command", "goto", c.Goto)
 	if !g.HasNodeName(c.Goto) {
 		return fmt.Errorf("Node not present in Graph %s=%s", "goto", c.Goto)
@@ -24,30 +24,30 @@ func (c *Command[T]) ApplyTo(g IGraph[T]) error {
 	return nil
 }
 
-func NewCommand[T any](goTo string, newState T) *Command[T] {
-	return &Command[T]{
+func NewCommand[T any, E any](goTo string, newState T) *Command[T, E] {
+	return &Command[T, E]{
 		goTo,
 		newState,
 	}
 }
 
-type ExitCommand[T any] struct{}
+type ExitCommand[T any, E any] struct{}
 
-func (c *ExitCommand[T]) ApplyTo(g IGraph[T]) error {
+func (c *ExitCommand[T, E]) ApplyTo(g IGraph[T, E]) error {
 	g.SetCompleted()
 	return nil
 }
 
-func NewExitCommand[T any]() *ExitCommand[T] {
-	return &ExitCommand[T]{}
+func NewExitCommand[T any, E any]() *ExitCommand[T, E] {
+	return &ExitCommand[T, E]{}
 }
 
-type noOpCommand[T any] struct{}
+type noOpCommand[T any, E any] struct{}
 
-func (c *noOpCommand[T]) ApplyTo(g IGraph[T]) error {
+func (c *noOpCommand[T, E]) ApplyTo(g IGraph[T, E]) error {
 	return nil
 }
 
-func NoOpCommand[T any]() *noOpCommand[T] {
-	return &noOpCommand[T]{}
+func NoOpCommand[T any, E any]() *noOpCommand[T, E] {
+	return &noOpCommand[T, E]{}
 }
