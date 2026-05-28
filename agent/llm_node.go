@@ -8,7 +8,7 @@ import (
 	"github.com/ParthPant/pathfinder/graph"
 )
 
-func (agent *Agent) llmNode(ctx context.Context, ch chan<- graph.RunEvent[AgentEvent], chintr chan<- graph.RunInterrupt[AgentInterrupt], state AgentState) (graph.ICommand[AgentState, AgentEvent, AgentInterrupt], error) {
+func (agent *Agent) llmNode(ctx context.Context, ch AgentEventCh, chintr AgentIntrCh, state AgentState) (graph.ICommand[AgentState, AgentEvent, AgentInterrupt], error) {
 	// get conversation
 	messages := append(state.systemMessages, state.messages...)
 

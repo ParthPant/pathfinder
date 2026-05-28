@@ -10,8 +10,8 @@ import (
 )
 
 func (agent *Agent) afterLlmNode(ctx context.Context,
-	ch chan<- graph.RunEvent[AgentEvent],
-	chintr chan<- graph.RunInterrupt[AgentInterrupt],
+	ch AgentEventCh,
+	chintr AgentIntrCh,
 	state AgentState) (graph.ICommand[AgentState, AgentEvent, AgentInterrupt], error) {
 	for _, mware := range slices.Backward(agent.middlewares) {
 		newState, err := mware.AfterLlm(ctx, ch, chintr, state)

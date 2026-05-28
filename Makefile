@@ -12,17 +12,22 @@ CLEAN=$(GO) clean
 RUN=./$(BUILD_DIR)/$(BINARY_NAME)
 RUN_TUI=./$(BUILD_DIR)/$(TUI_BINARY_NAME)
 
-.PHONY: all build run run-tui test clean help
+.PHONY: all build build-tui run run-tui test clean help
 
 all: build
 
 ## build: Build the project and put the binaries in the build directory
 build:
-	@echo "Building $(BINARY_NAME) and $(TUI_BINARY_NAME)..."
+	@echo "Building $(BINARY_NAME)..."
 	@mkdir -p $(BUILD_DIR)
 	$(BUILD) -o $(BUILD_DIR)/$(BINARY_NAME) .
+	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME)"
+
+build-tui:
+	@echo "Building $(TUI_BINARY_NAME)..."
+	@mkdir -p $(BUILD_DIR)
 	$(BUILD) -o $(BUILD_DIR)/$(TUI_BINARY_NAME) ./cmd/tui
-	@echo "Build complete: $(BUILD_DIR)/$(BINARY_NAME), $(BUILD_DIR)/$(TUI_BINARY_NAME)"
+	@echo "Build complete: $(BUILD_DIR)/$(TUI_BINARY_NAME)"
 
 ## run: Run the main application
 run: build
@@ -31,7 +36,7 @@ run: build
 
 
 ## run-tui: Run the tui applicaiton
-run-tui: build
+run-tui: build-tui
 	@echo "Running TUI"
 	$(BUILD_DIR)/$(TUI_BINARY_NAME)
 

@@ -2,13 +2,16 @@ package agent
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 
 	"github.com/ParthPant/pathfinder/graph"
 )
 
-func (agent *Agent) toolNode(ctx context.Context, ch chan<- graph.RunEvent[AgentEvent], chintr chan<- graph.RunInterrupt[AgentInterrupt], state AgentState) (graph.ICommand[AgentState, AgentEvent, AgentInterrupt], error) {
+func (agent *Agent) toolNode(
+	ctx context.Context,
+	ch AgentEventCh,
+	chintr AgentIntrCh,
+	state AgentState) (graph.ICommand[AgentState, AgentEvent, AgentInterrupt], error) {
 	messages := state.messages
 
 	lastMessage := messages[len(messages)-1]
@@ -21,31 +24,17 @@ func (agent *Agent) toolNode(ctx context.Context, ch chan<- graph.RunEvent[Agent
 			slog.Warn("Channel buffer is full. Event dropped.")
 		}
 
-		interrupt := graph.NewRunInterrupt(&AgentInterrupt{
+		intr := AgentInterrupt{
 			Type: INTR_TOOLCALL,
 			OfToolCall: ToolCallInterrupt{
 				Call: call,
 			},
-		})
-		slog.Debug("Raising Interrupt", "type", interrupt.Value.Type)
-
-		select {
-		case chintr <- interrupt:
-		case <-ctx.Done():
-			slog.Error("Context finished.", "error", ctx.Err().Error())
-			return nil, ctx.Err()
 		}
 
-		select {
-		case ok := <-interrupt.Resp:
-			if !ok {
-				slog.Info("Interrupt Canceled.")
-				return nil, errors.New("Interrupt Canceled.")
-			}
-			slog.Info("Interrupt Continued.")
-		case <-ctx.Done():
-			slog.Error("Context finished.", "error", ctx.Err().Error())
-			return nil, ctx.Err()
+		if ok, err := agent.interrupt(ctx, intr, chintr); err != nil {
+			return nil, err
+		} else if !ok {
+			return graph.NoOpCommand[AgentState, AgentEvent, AgentInterrupt](), nil
 		}
 
 		toolMessage, err := agent.toolExecutor.Execute(ctx, call)

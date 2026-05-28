@@ -51,3 +51,12 @@ func (c *noOpCommand[T, E, I]) ApplyTo(g IGraph[T, E, I]) error {
 func NoOpCommand[T any, E any, I any]() *noOpCommand[T, E, I] {
 	return &noOpCommand[T, E, I]{}
 }
+
+type ResumeCommand[T any, E any, I any] struct {
+	Resume T
+}
+
+func (c *ResumeCommand[T, E, I]) ApplyTo(g IGraph[T, E, I]) error {
+	g.SetState(c.Resume)
+	return nil
+}

@@ -8,11 +8,12 @@ import (
 )
 
 type IGraph[T any, E any, I any] interface {
-	Run(context.Context) (<-chan RunEvent[E], <-chan RunInterrupt[I])
+	Run(context.Context) (<-chan RunEvent[E], <-chan RunInterrupt[T, E, I])
 	SetState(T) error
 	SetEntryNode(string)
 	SetNode(string)
 	CurrentNode() string
+	IsCompleted() bool
 	SetCompleted()
 	HasNodeName(string) bool
 }
@@ -28,15 +29,15 @@ type BaseGraph[T any, E any, I any] struct {
 	store         stores.IStore[T]
 }
 
-type RunInterrupt[I any] struct {
+type RunInterrupt[T any, E any, I any] struct {
 	Value *I
-	Resp  chan bool
+	Resp  chan ICommand[T, E, I]
 }
 
-func NewRunInterrupt[I any](v *I) RunInterrupt[I] {
-	return RunInterrupt[I]{
+func NewRunInterrupt[T any, E any, I any](v *I) RunInterrupt[T, E, I] {
+	return RunInterrupt[T, E, I]{
 		Value: v,
-		Resp:  make(chan bool),
+		Resp:  make(chan ICommand[T, E, I]),
 	}
 }
 
@@ -66,6 +67,10 @@ func NewBaseGraph[T any, E any, I any](state T, nodes map[string]Node[T, E, I], 
 		entryNode:     entryNode,
 		store:         store,
 	}
+}
+
+func (g *BaseGraph[T, E, I]) IsCompleted() bool {
+	return g.completed
 }
 
 func (g *BaseGraph[T, E, I]) CurrentNode() string {
@@ -103,11 +108,11 @@ func (g *BaseGraph[T, E, I]) GetState() T {
 	return g.state
 }
 
-func (g *BaseGraph[T, E, I]) Run(ctx context.Context) (<-chan RunEvent[E], <-chan RunInterrupt[I]) {
+func (g *BaseGraph[T, E, I]) Run(ctx context.Context) (<-chan RunEvent[E], <-chan RunInterrupt[T, E, I]) {
 	// TODO: Detect cycles.
 
 	ch := make(chan RunEvent[E], 10)
-	intch := make(chan RunInterrupt[I])
+	intch := make(chan RunInterrupt[T, E, I])
 
 	go func() {
 		defer close(ch)
@@ -122,6 +127,7 @@ func (g *BaseGraph[T, E, I]) Run(ctx context.Context) (<-chan RunEvent[E], <-cha
 
 			if err := cmd.ApplyTo(g); err != nil {
 				ch <- NewGraphErrorEvent[E](err)
+				g.Reset()
 				return
 			}
 

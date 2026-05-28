@@ -11,6 +11,7 @@ import (
 
 	"github.com/ParthPant/pathfinder/agent"
 	"github.com/ParthPant/pathfinder/backends"
+	"github.com/ParthPant/pathfinder/graph"
 	"github.com/ParthPant/pathfinder/llms"
 	"github.com/ParthPant/pathfinder/messages"
 	"github.com/ParthPant/pathfinder/prompts"
@@ -119,7 +120,7 @@ func main() {
 	}
 }
 
-func handleIntr(i *agent.AgentInterrupt, scanner *bufio.Scanner) bool {
+func handleIntr(i *agent.AgentInterrupt, scanner *bufio.Scanner) graph.ICommand[agent.AgentState, agent.AgentEvent, agent.AgentInterrupt] {
 	switch i.Type {
 	case agent.INTR_TOOLCALL:
 		fmt.Printf("Agent wants to call %s (y/n): ", i.OfToolCall.Call.Name)
@@ -133,9 +134,9 @@ func handleIntr(i *agent.AgentInterrupt, scanner *bufio.Scanner) bool {
 		switch userInput {
 		case "exit":
 		case "n":
-			return false
+			return graph.NewExitCommand[agent.AgentState, agent.AgentEvent, agent.AgentInterrupt]()
 		case "y":
-			return true
+			return graph.NoOpCommand[agent.AgentState, agent.AgentEvent, agent.AgentInterrupt]()
 		default:
 			fmt.Printf("Invalid option. enter y/n: ")
 		}
