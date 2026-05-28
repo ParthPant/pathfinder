@@ -9,14 +9,14 @@ import (
 	"github.com/ParthPant/pathfinder/graph"
 )
 
-func (agent *Agent) afterAgentNode(ctx context.Context, ch chan<- graph.RunEvent[AgentEvent], state AgentState) (graph.ICommand[AgentState, AgentEvent], error) {
+func (agent *Agent) afterAgentNode(ctx context.Context, ch chan<- graph.RunEvent[AgentEvent], chintr chan<- graph.RunInterrupt[AgentInterrupt], state AgentState) (graph.ICommand[AgentState, AgentEvent, AgentInterrupt], error) {
 	for _, mware := range slices.Backward(agent.middlewares) {
-		newState, err := mware.AfterAgent(ctx, ch, state)
+		newState, err := mware.AfterAgent(ctx, ch, chintr, state)
 		if err != nil {
 			slog.Error("Error running middleware", "middleware", reflect.TypeOf(mware).Name(), "error", err)
 		}
 		state = newState
 	}
 
-	return graph.NewExitCommand[AgentState, AgentEvent](), nil
+	return graph.NewExitCommand[AgentState, AgentEvent, AgentInterrupt](), nil
 }

@@ -12,16 +12,9 @@ import (
 	"github.com/openai/openai-go/v3/shared"
 )
 
-type LlmConfig struct {
-	BaseUrl         string
-	APIKey          string
-	Model           string
-	MaxOutputTokens int64
-}
-
 type OpenAiLlm struct {
 	FunctionDefinitions []tools.FunctionDefinition
-	Config              LlmConfig
+	config              LlmConfig
 	client              *openai.Client
 }
 
@@ -29,9 +22,13 @@ func NewOpenAiLlm(config LlmConfig) *OpenAiLlm {
 	opts := []option.RequestOption{option.WithBaseURL(config.BaseUrl), option.WithAPIKey(config.APIKey)}
 	client := openai.NewClient(opts...)
 	return &OpenAiLlm{
-		Config: config,
+		config: config,
 		client: &client,
 	}
+}
+
+func (m *OpenAiLlm) Config() *LlmConfig {
+	return &m.config
 }
 
 func (m *OpenAiLlm) RegisterFunctionDefinition(tool tools.FunctionDefinition) error {
@@ -41,8 +38,8 @@ func (m *OpenAiLlm) RegisterFunctionDefinition(tool tools.FunctionDefinition) er
 
 func (m *OpenAiLlm) NewResponse(ctx context.Context, input []messages.Message) (messages.Message, error) {
 	response, err := m.client.Responses.New(ctx, responses.ResponseNewParams{
-		Model:           m.Config.Model,
-		MaxOutputTokens: openai.Int(m.Config.MaxOutputTokens),
+		Model:           m.config.Model,
+		MaxOutputTokens: openai.Int(m.config.MaxOutputTokens),
 		Input: responses.ResponseNewParamsInputUnion{
 			OfInputItemList: createInputItemList(input),
 		},
@@ -239,6 +236,7 @@ func createOutputContentFromResponse(res *responses.Response) []messages.OutputI
 	return outputList
 }
 
+// TODO: Either make this private or add it to IToolCallingLlm
 func (m *OpenAiLlm) GetTools() []responses.ToolUnionParam {
 	tools := make([]responses.ToolUnionParam, 0)
 	for _, functionDefinition := range m.FunctionDefinitions {

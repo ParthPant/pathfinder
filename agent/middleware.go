@@ -8,8 +8,8 @@ import (
 
 type IMiddleware[T any] interface {
 	OnAttach(*Agent) error
-	BeforeAgent(context.Context, chan<- graph.RunEvent[AgentEvent], T) (T, error)
-	AfterAgent(context.Context, chan<- graph.RunEvent[AgentEvent], T) (T, error)
-	BeforeLlm(context.Context, chan<- graph.RunEvent[AgentEvent], T) (T, error)
-	AfterLlm(context.Context, chan<- graph.RunEvent[AgentEvent], T) (T, error)
+	BeforeAgent(context.Context, chan<- graph.RunEvent[AgentEvent], chan<- graph.RunInterrupt[AgentInterrupt], T) (T, error)
+	AfterAgent(context.Context, chan<- graph.RunEvent[AgentEvent], chan<- graph.RunInterrupt[AgentInterrupt], T) (T, error)
+	BeforeLlm(context.Context, chan<- graph.RunEvent[AgentEvent], chan<- graph.RunInterrupt[AgentInterrupt], T) (T, error)
+	AfterLlm(context.Context, chan<- graph.RunEvent[AgentEvent], chan<- graph.RunInterrupt[AgentInterrupt], T) (T, error)
 }

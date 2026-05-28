@@ -96,13 +96,48 @@ func main() {
 		tctx, cancel := context.WithTimeout(ctx, 15*60*time.Second)
 		defer cancel()
 
-		ch := a.Run(tctx)
-		for e := range ch {
-			if e.Err != nil {
-				fmt.Printf("Error while running Agent: %s\n", e.Err.Error())
-			} else {
-				printEvent(e.Value)
+		ch, chintr := a.Run(tctx)
+		for ch != nil || chintr != nil {
+			select {
+			case e, ok := <-ch:
+				if e.Err != nil {
+					fmt.Printf("Error while running Agent: %s\n", e.Err.Error())
+				} else if !ok {
+					ch = nil
+				} else {
+					printEvent(e.Value)
+				}
+			case intr, ok := <-chintr:
+				if !ok {
+					chintr = nil
+					continue
+				}
+				slog.Info("Interrupt Received.")
+				intr.Resp <- handleIntr(intr.Value, scanner)
 			}
+		}
+	}
+}
+
+func handleIntr(i *agent.AgentInterrupt, scanner *bufio.Scanner) bool {
+	switch i.Type {
+	case agent.INTR_TOOLCALL:
+		fmt.Printf("Agent wants to call %s (y/n): ", i.OfToolCall.Call.Name)
+	}
+	for {
+		var userInput string
+		if scanner.Scan() {
+			userInput = scanner.Text()
+		}
+
+		switch userInput {
+		case "exit":
+		case "n":
+			return false
+		case "y":
+			return true
+		default:
+			fmt.Printf("Invalid option. enter y/n: ")
 		}
 	}
 }

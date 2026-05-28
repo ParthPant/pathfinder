@@ -6,4 +6,4 @@ import "context"
 // 	Run(context.Context) (ICommand[T], error)
 // }
 
-type Node[T any, E any] = func(context.Context, chan<- RunEvent[E], T) (ICommand[T, E], error)
+type Node[T any, E any, I any] = func(context.Context, chan<- RunEvent[E], chan<- RunInterrupt[I], T) (ICommand[T, E, I], error)
