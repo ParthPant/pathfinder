@@ -11,7 +11,7 @@ func (agent *Agent) toolNode(
 	ctx context.Context,
 	ch AgentEventCh,
 	chintr AgentIntrCh,
-	state AgentState) (graph.ICommand[AgentState, AgentEvent, AgentInterrupt], error) {
+	state AgentState) (AgentCmd, error) {
 	messages := state.messages
 
 	lastMessage := messages[len(messages)-1]
@@ -24,18 +24,18 @@ func (agent *Agent) toolNode(
 			slog.Warn("Channel buffer is full. Event dropped.")
 		}
 
-		intr := AgentInterrupt{
-			Type: INTR_TOOLCALL,
-			OfToolCall: ToolCallInterrupt{
-				Call: call,
-			},
-		}
+		// intr := AgentInterrupt{
+		// 	Type: INTR_TOOLCALL,
+		// 	OfToolCall: ToolCallInterrupt{
+		// 		Call: call,
+		// 	},
+		// }
 
-		if ok, err := agent.interrupt(ctx, intr, chintr); err != nil {
-			return nil, err
-		} else if !ok {
-			return graph.NoOpCommand[AgentState, AgentEvent, AgentInterrupt](), nil
-		}
+		// if ok, err := agent.Interrupt(ctx, &intr, chintr); err != nil {
+		// 	return nil, err
+		// } else if !ok {
+		// 	return graph.NoOpCommand[AgentState, AgentEvent, AgentInterrupt](), nil
+		// }
 
 		toolMessage, err := agent.toolExecutor.Execute(ctx, call)
 		if err != nil {

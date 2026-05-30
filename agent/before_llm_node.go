@@ -11,7 +11,7 @@ import (
 func (agent *Agent) beforeLlmNode(ctx context.Context,
 	ch AgentEventCh,
 	chintr AgentIntrCh,
-	state AgentState) (graph.ICommand[AgentState, AgentEvent, AgentInterrupt], error) {
+	state AgentState) (AgentCmd, error) {
 	for _, mware := range agent.middlewares {
 		newState, err := mware.BeforeLlm(ctx, ch, chintr, state)
 		if err != nil {

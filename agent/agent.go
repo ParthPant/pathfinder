@@ -28,6 +28,7 @@ type Agent struct {
 
 type AgentEventCh = chan<- graph.RunEvent[AgentEvent]
 type AgentIntrCh = chan<- graph.RunInterrupt[AgentState, AgentEvent, AgentInterrupt]
+type AgentCmd = graph.ICommand[AgentState, AgentEvent, AgentInterrupt]
 
 func NewAgent(llm llms.IToolCallingLlm, toolExecutor tools.IToolExecutor, sessionRepo stores.IStore[AgentState]) *Agent {
 	var agent Agent

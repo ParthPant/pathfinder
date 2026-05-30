@@ -16,6 +16,7 @@ type IGraph[T any, E any, I any] interface {
 	IsCompleted() bool
 	SetCompleted()
 	HasNodeName(string) bool
+	Interrupt(context.Context, *I, chan<- RunInterrupt[T, E, I]) (bool, error)
 }
 
 type BaseGraph[T any, E any, I any] struct {
@@ -147,6 +148,30 @@ func (g *BaseGraph[T, E, I]) HasNodeName(n string) bool {
 		return true
 	}
 	return false
+}
+
+func (g *BaseGraph[T, E, I]) Interrupt(ctx context.Context, val *I, intch chan<- RunInterrupt[T, E, I]) (bool, error) {
+	interrupt := NewRunInterrupt[T, E](val)
+	slog.Debug("Raising Interrupt", "type", interrupt.Value)
+
+	select {
+	case intch <- interrupt:
+	case <-ctx.Done():
+		slog.Error("Context finished.", "error", ctx.Err().Error())
+		return false, ctx.Err()
+	}
+
+	select {
+	case cmd := <-interrupt.Resp:
+		cmd.ApplyTo(g)
+	case <-ctx.Done():
+		slog.Error("Context finished.", "error", ctx.Err().Error())
+		return false, ctx.Err()
+	}
+	if g.completed {
+		return false, nil
+	}
+	return true, nil
 }
 
 func (g *BaseGraph[T, E, I]) NewSession() (string, error) {

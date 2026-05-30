@@ -120,7 +120,7 @@ func main() {
 	}
 }
 
-func handleIntr(i *agent.AgentInterrupt, scanner *bufio.Scanner) graph.ICommand[agent.AgentState, agent.AgentEvent, agent.AgentInterrupt] {
+func handleIntr(i *agent.AgentInterrupt, scanner *bufio.Scanner) agent.AgentCmd {
 	switch i.Type {
 	case agent.INTR_TOOLCALL:
 		fmt.Printf("Agent wants to call %s (y/n): ", i.OfToolCall.Call.Name)
