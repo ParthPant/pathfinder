@@ -104,8 +104,8 @@ func (store *FTSMemoryStore) Close() {
 }
 
 func (store *FTSMemoryStore) GetAll() ([]MemoryNote, error) {
-	rows, err := store.db.Query("SELECT id, kind, name, content, tags, created_at, updated_at, deleted, version, path FROM memories WHERE deleted = 0")
-	if err != err {
+	rows, err := store.db.Query(FETCH_ALL_LATEST_QUERY)
+	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()

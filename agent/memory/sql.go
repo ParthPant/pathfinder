@@ -131,3 +131,14 @@ WHERE memories_fts MATCH ?
 AND m.deleted = 0
 ORDER BY rank
 LIMIT 10;`
+
+const FETCH_ALL_LATEST_QUERY = `SELECT m.id, m.kind, m.name, m.content, m.tags, m.created_at, m.updated_at, m.deleted, m.version, m.path
+FROM memories m
+INNER JOIN (
+    SELECT name, MAX(created_at) AS max_created_at
+    FROM memories
+    WHERE deleted = 0
+    GROUP BY name
+) latest ON m.name = latest.name AND m.created_at = latest.max_created_at
+WHERE m.deleted = 0
+ORDER BY created_at`
