@@ -16,6 +16,10 @@ func (agent *Agent) afterAgentNode(ctx context.Context, ch AgentEventCh, chintr 
 			slog.Error("Error running middleware", "middleware", reflect.TypeOf(mware).Name(), "error", err)
 		}
 		state = newState
+
+		if agent.IsCompleted() {
+			return graph.NoOpCommand[AgentState, AgentEvent, AgentInterrupt](), nil
+		}
 	}
 
 	return graph.NewExitCommand[AgentState, AgentEvent, AgentInterrupt](), nil

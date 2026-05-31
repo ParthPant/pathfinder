@@ -18,24 +18,16 @@ func (agent *Agent) toolNode(
 	for _, call := range lastMessage.GetFunctionCalls() {
 		slog.Info("Making FunctionCall", "call", call)
 
+		if _, ok := state.userRejectedTools[call.Name]; ok {
+			slog.Debug("Skipping execution for tool", "name", call.Name)
+			continue
+		}
+
 		select {
 		case ch <- graph.NewEvent(NewToolCallEvent(call)):
 		default:
 			slog.Warn("Channel buffer is full. Event dropped.")
 		}
-
-		// intr := AgentInterrupt{
-		// 	Type: INTR_TOOLCALL,
-		// 	OfToolCall: ToolCallInterrupt{
-		// 		Call: call,
-		// 	},
-		// }
-
-		// if ok, err := agent.Interrupt(ctx, &intr, chintr); err != nil {
-		// 	return nil, err
-		// } else if !ok {
-		// 	return graph.NoOpCommand[AgentState, AgentEvent, AgentInterrupt](), nil
-		// }
 
 		toolMessage, err := agent.toolExecutor.Execute(ctx, call)
 		if err != nil {

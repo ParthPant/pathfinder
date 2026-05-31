@@ -10,13 +10,14 @@ import (
 type IGraph[T any, E any, I any] interface {
 	Run(context.Context) (<-chan RunEvent[E], <-chan RunInterrupt[T, E, I])
 	SetState(T) error
+	GetState() T
 	SetEntryNode(string)
 	SetNode(string)
 	CurrentNode() string
 	IsCompleted() bool
 	SetCompleted()
 	HasNodeName(string) bool
-	Interrupt(context.Context, *I, chan<- RunInterrupt[T, E, I]) (bool, error)
+	Interrupt(context.Context, *I, chan<- RunInterrupt[T, E, I]) (T, error)
 }
 
 type BaseGraph[T any, E any, I any] struct {
@@ -150,7 +151,7 @@ func (g *BaseGraph[T, E, I]) HasNodeName(n string) bool {
 	return false
 }
 
-func (g *BaseGraph[T, E, I]) Interrupt(ctx context.Context, val *I, intch chan<- RunInterrupt[T, E, I]) (bool, error) {
+func (g *BaseGraph[T, E, I]) Interrupt(ctx context.Context, val *I, intch chan<- RunInterrupt[T, E, I]) (T, error) {
 	interrupt := NewRunInterrupt[T, E](val)
 	slog.Debug("Raising Interrupt", "type", interrupt.Value)
 
@@ -158,7 +159,7 @@ func (g *BaseGraph[T, E, I]) Interrupt(ctx context.Context, val *I, intch chan<-
 	case intch <- interrupt:
 	case <-ctx.Done():
 		slog.Error("Context finished.", "error", ctx.Err().Error())
-		return false, ctx.Err()
+		return g.state, ctx.Err()
 	}
 
 	select {
@@ -166,12 +167,9 @@ func (g *BaseGraph[T, E, I]) Interrupt(ctx context.Context, val *I, intch chan<-
 		cmd.ApplyTo(g)
 	case <-ctx.Done():
 		slog.Error("Context finished.", "error", ctx.Err().Error())
-		return false, ctx.Err()
+		return g.state, ctx.Err()
 	}
-	if g.completed {
-		return false, nil
-	}
-	return true, nil
+	return g.state, nil
 }
 
 func (g *BaseGraph[T, E, I]) NewSession() (string, error) {

@@ -15,6 +15,10 @@ func (agent *Agent) beforeAgentNode(ctx context.Context, ch AgentEventCh, chintr
 			slog.Error("Error running middleware", "middleware", reflect.TypeOf(mware).Name(), "error", err)
 		}
 		state = newState
+
+		if agent.IsCompleted() {
+			return graph.NoOpCommand[AgentState, AgentEvent, AgentInterrupt](), nil
+		}
 	}
 
 	return graph.NewCommand[AgentState, AgentEvent, AgentInterrupt]("beforeLlmNode", state), nil

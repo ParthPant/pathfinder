@@ -19,6 +19,10 @@ func (agent *Agent) afterLlmNode(ctx context.Context,
 			slog.Error("Error running middleware", "middleware", reflect.TypeOf(mware).Name(), "error", err)
 		}
 		state = newState
+
+		if agent.IsCompleted() {
+			return graph.NoOpCommand[AgentState, AgentEvent, AgentInterrupt](), nil
+		}
 	}
 
 	lastMessage := state.messages[len(state.messages)-1]

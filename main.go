@@ -71,6 +71,9 @@ func main() {
 	summarizeMiddleware := agent.NewSummarizationMiddleware(summaryLlm, prompts.SummarizationPrompt, 90000, 10)
 	a.AddMiddleware(summarizeMiddleware)
 
+	hitlMiddleware := agent.NewHITLMiddleware(agent.WithHITLTool("execute"))
+	a.AddMiddleware(hitlMiddleware)
+
 	_, err = a.StartSession()
 	if err != nil {
 		panic(err)
@@ -134,7 +137,7 @@ func handleIntr(i *agent.AgentInterrupt, scanner *bufio.Scanner) agent.AgentCmd 
 		switch userInput {
 		case "exit":
 		case "n":
-			return graph.NewExitCommand[agent.AgentState, agent.AgentEvent, agent.AgentInterrupt]()
+			return agent.RejectToolCommand(i.OfToolCall.Call.Name)
 		case "y":
 			return graph.NoOpCommand[agent.AgentState, agent.AgentEvent, agent.AgentInterrupt]()
 		default:

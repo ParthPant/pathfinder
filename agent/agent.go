@@ -15,6 +15,8 @@ import (
 type AgentState struct {
 	systemMessages []messages.Message
 	messages       []messages.Message
+
+	userRejectedTools map[string]struct{}
 }
 
 type Agent struct {
