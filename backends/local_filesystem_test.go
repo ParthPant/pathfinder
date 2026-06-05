@@ -13,6 +13,12 @@ import (
 func TestLs(t *testing.T) {
 	dir := t.TempDir()
 
+	ignoreLines := []string{
+		"*.go",
+	}
+	os.WriteFile(filepath.Join(dir, ".gitignore"), []byte(strings.Join(ignoreLines, "\n")), 0644)
+	os.WriteFile(filepath.Join(dir, "test.go"), []byte{}, 0644)
+
 	os.WriteFile(filepath.Join(dir, "one.txt"), []byte{}, 0644)
 	os.WriteFile(filepath.Join(dir, "two.txt"), []byte{}, 0644)
 	os.Mkdir(filepath.Join(dir, "subdir"), 0744)
@@ -35,7 +41,7 @@ func TestLs(t *testing.T) {
 
 	t.Logf("Ls Result %v", res.Entries)
 
-	expected := []string{"one.txt", "two.txt", "subdir"}
+	expected := []string{"one.txt", "two.txt", "subdir", ".gitignore"}
 	slices.Sort(expected)
 
 	for i, entry := range res.Entries {

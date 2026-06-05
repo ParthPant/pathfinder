@@ -14,17 +14,20 @@ import (
 )
 
 type LocalFileSystemBackend struct {
-	root string
+	root         string
+	ignorePolicy FSIgnorePolicy
 }
 
 func NewLocalFileSystemBackend(workingDir string) *LocalFileSystemBackend {
 	pwd, err := filepath.Abs(workingDir)
 	if err != nil {
 		slog.Error("Error creating Absolute Path", "input", workingDir)
+		return nil
 	}
 	slog.Info("Setting WorkingDir", "input", workingDir, "WorkingDir", pwd)
 	return &LocalFileSystemBackend{
-		pwd,
+		root:         pwd,
+		ignorePolicy: NewGitIgnorePolicy(workingDir),
 	}
 }
 
@@ -46,6 +49,12 @@ func (lfs *LocalFileSystemBackend) Ls(ctx context.Context, input LsInput) (LsRes
 			continue
 		}
 
+		filePath := filepath.Join(basePath, info.Name())
+		if ignore, _ := lfs.ignorePolicy.ShouldIgnore(filePath); ignore {
+			slog.Debug("File Ignored", "path", filePath)
+			continue
+		}
+
 		entries = append(entries, FileInfo{
 			Name:       info.Name(),
 			IsDir:      info.IsDir(),
@@ -62,6 +71,13 @@ func (lfs *LocalFileSystemBackend) Ls(ctx context.Context, input LsInput) (LsRes
 func (lfs *LocalFileSystemBackend) Read(ctx context.Context, input ReadInput) (ReadResult, error) {
 	path := filepath.Join(lfs.root, input.Path)
 	slog.Info("Local File System Read", "path", path, "input", input)
+
+	if ignore, _ := lfs.ignorePolicy.ShouldIgnore(filepath.Join(path)); ignore {
+		err := NewFSError("Reading this file is forbidden.")
+		return ReadResult{
+			Error: err,
+		}, err
+	}
 
 	file, err := os.Open(path)
 	if err != nil {
@@ -137,6 +153,9 @@ func (lfs *LocalFileSystemBackend) Grep(ctx context.Context, input GrepInput) (G
 	} else {
 		grepMatches := make([]GrepMatch, 0)
 		for _, matchedPath := range matches {
+			if ignore, _ := lfs.ignorePolicy.ShouldIgnore(matchedPath); ignore {
+				continue
+			}
 			grepMatches = append(grepMatches, lfs.grep(matchedPath, re)...)
 		}
 
@@ -163,7 +182,12 @@ func (lfs *LocalFileSystemBackend) Glob(ctx context.Context, input GlobInput) (G
 
 	entries := []FileInfo{}
 	for _, fileName := range paths {
-		info, err := os.Stat(filepath.Join(searchBasePath, fileName))
+		absPath := filepath.Join(searchBasePath, fileName)
+		if ignore, _ := lfs.ignorePolicy.ShouldIgnore(absPath); ignore {
+			continue
+		}
+
+		info, err := os.Stat(absPath)
 		if err != nil {
 			slog.Error(err.Error())
 			continue
@@ -190,6 +214,14 @@ func (lfs *LocalFileSystemBackend) Write(ctx context.Context, input WriteInput) 
 	path := filepath.Join(lfs.root, input.Path)
 	slog.Debug("Local File System Write", "path", path)
 
+	if ignore, _ := lfs.ignorePolicy.ShouldIgnore(input.Path); ignore {
+		err := NewFSError("Writing to this file is forbidden.")
+		return WriteResult{
+			Path:  input.Path,
+			Error: err,
+		}, err
+	}
+
 	if err := os.WriteFile(path, []byte(input.Content), 0644); err != nil {
 		return WriteResult{
 			input.Path,
@@ -205,6 +237,14 @@ func (lfs *LocalFileSystemBackend) Write(ctx context.Context, input WriteInput) 
 func (lfs *LocalFileSystemBackend) Edit(ctx context.Context, input EditInput) (EditResult, error) {
 	path := filepath.Join(lfs.root, input.Path)
 	slog.Debug("Local File System Edit", "path", path)
+
+	if ignore, _ := lfs.ignorePolicy.ShouldIgnore(input.Path); ignore {
+		err := NewFSError("Writing to this file is forbidden.")
+		return EditResult{
+			Path:  input.Path,
+			Error: err,
+		}, err
+	}
 
 	content, err := os.ReadFile(path)
 	if err != nil {
