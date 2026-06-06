@@ -5,6 +5,7 @@ import (
 
 	"github.com/ParthPant/pathfinder/messages"
 	"github.com/ParthPant/pathfinder/tools"
+	"github.com/openai/openai-go/v3/shared"
 )
 
 type ILlm interface {
@@ -23,4 +24,5 @@ type LlmConfig struct {
 	APIKey          string
 	Model           string
 	MaxOutputTokens int64
+	ReasoningEffort shared.ReasoningEffort // "" defaults to medium in NewResponse
 }

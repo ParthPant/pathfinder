@@ -129,3 +129,37 @@ func (agent *Agent) GetModel() llms.IToolCallingLlm {
 func (agent *Agent) GetTools() []tools.FunctionDefinition {
 	return agent.toolExecutor.GetTools()
 }
+
+// GetLlmConfig returns a pointer to the agent's LLM configuration.
+func (agent *Agent) GetLlmConfig() *llms.LlmConfig {
+	return agent.llm.Config()
+}
+
+// GetFileSystemBackend returns the agent's filesystem backend.
+func (agent *Agent) GetFileSystemBackend() backends.IFileSystemBackend {
+	return agent.fsBackend
+}
+
+// GetExecutionBackend returns the agent's execution backend.
+func (agent *Agent) GetExecutionBackend() backends.IExecutionBackend {
+	return agent.executionBackend
+}
+
+// RegisterSpawnSubagentTool creates and registers the spawn_subagent tool.
+func (agent *Agent) RegisterSpawnSubagentTool() error {
+	fd, err := tools.NewFunctionDefinition(
+		"spawn_subagent",
+		"Use this tool to spawn a subagent to complete a given task. "+
+			"The subagent will have access to configurable tools and reasoning effort. "+
+			"Available tools options: 'files' (read/write/ls/grep/glob/edit), 'execution' (files + shell), "+
+			"'internet' (files + shell + internet_search + open_url), 'all' (everything except spawn_subagent). "+
+			"Reasoning options: 'none', 'low', 'medium', 'high'.",
+		tools.ParamsFor[SpawnSubagentInput](),
+		false,
+		agent.spawnSubagent,
+	)
+	if err != nil {
+		return err
+	}
+	return agent.RegisterFunctionCall(fd)
+}

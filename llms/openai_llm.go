@@ -37,6 +37,11 @@ func (m *OpenAiLlm) RegisterFunctionDefinition(tool tools.FunctionDefinition) er
 }
 
 func (m *OpenAiLlm) NewResponse(ctx context.Context, input []messages.Message) (messages.Message, error) {
+	reasoningEffort := m.config.ReasoningEffort
+	if reasoningEffort == "" {
+		reasoningEffort = shared.ReasoningEffortMedium
+	}
+
 	response, err := m.client.Responses.New(ctx, responses.ResponseNewParams{
 		Model:           m.config.Model,
 		MaxOutputTokens: openai.Int(m.config.MaxOutputTokens),
@@ -44,7 +49,7 @@ func (m *OpenAiLlm) NewResponse(ctx context.Context, input []messages.Message) (
 			OfInputItemList: createInputItemList(input),
 		},
 		Reasoning: shared.ReasoningParam{
-			Effort:  shared.ReasoningEffortMedium,
+			Effort:  reasoningEffort,
 			Summary: shared.ReasoningSummaryConcise,
 		},
 		Tools: m.GetTools(),

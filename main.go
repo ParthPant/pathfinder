@@ -77,6 +77,11 @@ func main() {
 	hitlMiddleware := agent.NewHITLMiddleware()
 	a.AddMiddleware(hitlMiddleware)
 
+	// Register the spawn_subagent tool
+	if err := a.RegisterSpawnSubagentTool(); err != nil {
+		panic(err)
+	}
+
 	_, err = a.StartSession()
 	if err != nil {
 		panic(err)
