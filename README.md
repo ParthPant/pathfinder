@@ -1,110 +1,165 @@
 # Pathfinder
 
-A Go-based AI agent framework for building LLM-powered applications with tool calling, multi-step reasoning, and pluggable backends. Built on top of the OpenAI API (via OpenRouter) and inspired by state-of-the-art agent architectures.
+A modular AI agent framework built in Go, featuring a graph-based execution engine, pluggable middleware pipeline, and extensible backends for tool execution.
 
-## Overview
+## Features
 
-Pathfinder is an experimental agent framework that enables an LLM to autonomously plan, reason, and execute tasks by combining:
+- **Graph-based execution** — The agent processes user requests through a directed graph of nodes (before agent → before LLM → LLM → after LLM → tool → before LLM → ... → after agent), enabling complex, multi-step reasoning with tool use.
+- **Pluggable middleware** — Extend agent behavior at key lifecycle points. Built-in middlewares include:
+  - **Memory** — Persistent memory backed by SQLite FTS for long-term knowledge retention.
+  - **Skills** — Inject specialized domain knowledge and capabilities into the agent's system prompt.
+  - **Summarization** — Automatically summarize lengthy conversations to stay within the model's context window.
+  - **HITL (Human-in-the-Loop)** — Intercept tool calls for user approval before execution.
+- **Tool-calling LLMs** — Uses OpenAI-compatible APIs (OpenAI, OpenRouter, etc.) with built-in support for function/tool calling.
+- **Backends** — Abstracted execution and file system backends:
+  - **Shell backend** — Execute arbitrary shell commands in a working directory.
+  - **File system backend** — Read, write, edit, list, grep, and glob files (with `.gitignore`-aware ignore patterns).
+- **Built-in tools** — Internet search (via Tavily), URL content extraction, and date/time retrieval.
+- **Resumable sessions** — Session state can be persisted via a pluggable store interface (in-memory included, SQLite planned).
 
-- **Chain-of-thought / reasoning** capabilities of modern LLMs
-- A **graph-based execution engine** for orchestrating multi-step agent workflows
-- **Tool calling** with automatic schema generation from Go function signatures
-- Pluggable **execution backends** (filesystem, shell, internet search, etc.)
+## Architecture
 
-The agent iterates between generating LLM responses (including reasoning and tool calls) and executing the requested tools, forming an intelligent loop capable of solving complex tasks.
+```
+User Input
+    │
+    ▼
+┌─────────────────┐
+│ beforeAgentNode │  ← Middlewares: Memory, Skills inject system prompts
+└────────┬────────┘
+         ▼
+┌─────────────────┐
+│  beforeLlmNode  │  ← Middlewares: Summarization, HITL prepare state
+└────────┬────────┘
+         ▼
+┌─────────────────┐
+│    llmNode      │  ← Call LLM with conversation + tools
+└────────┬────────┘
+         ▼
+┌─────────────────┐
+│  afterLlmNode   │  ← Middlewares: HITL intercepts tool calls
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    ▼         ▼
+┌─────────┐  ┌─────────────────┐
+│ toolNode │  │ afterAgentNode  │  → Exit
+└────┬────┘  └─────────────────┘
+     │           (no tool calls)
+     ▼
+  (back to beforeLlmNode)
+```
+
+## Getting Started
+
+### Prerequisites
+
+- Go 1.26+
+- An API key for an OpenAI-compatible provider (e.g., OpenAI, OpenRouter)
+- (Optional) A Tavily API key for internet search
+
+### Installation
+
+```bash
+git clone https://github.com/ParthPant/pathfinder.git
+cd pathfinder
+```
+
+### Configuration
+
+Create a `.env` file in the project root:
+
+```bash
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+OPENROUTER_API_KEY=your_api_key_here
+MODEL=your-model-name          # e.g., anthropic/claude-sonnet-4-20250514
+SUMMARY_MODEL=your-summary-model
+WORK_DIR=/path/to/workspace
+TAVILY_API_KEY=your_tavily_key   # optional
+LOG_LEVEL=4                      # 4 = DEBUG, 0 = ERROR (optional)
+```
+
+### Build & Run
+
+```bash
+make build
+make run
+```
+
+Or use Go directly:
+
+```bash
+go build -o build/pathfinder .
+./build/pathfinder
+```
+
+## Usage
+
+Once running, Pathfinder provides an interactive REPL. Type your requests at the `User:` prompt and the agent will reason, use tools, and respond.
+
+```
+User: What files are in the current directory?
+AI: Let me check.
+AI [toolCall]: ls
+Tool Response: ...
+AI: The current directory contains ...
+```
+
+### Human-in-the-Loop
+
+When the agent wants to execute an operation, you'll be prompted for approval:
+
+```
+Agent wants to call execute with args {"command":"rm -rf /tmp/test"} (y/n):
+```
 
 ## Project Structure
 
 ```
-pathfinder/
-├── main.go                          # Entry point – sets up the agent, backends, and REPL loop
-├── agent/
-│   ├── agent.go                     # Core Agent struct, session management, backend registration
-│   ├── llmNode.go                   # Graph node: generates LLM responses from conversation history
-│   └── toolNode.go                  # Graph node: executes function calls from the LLM response
-├── graph/
-│   ├── graph.go                     # Generic graph execution engine with state management
-│   ├── command.go                   # Graph commands (Goto, Exit) for controlling execution flow
-│   └── node.go                      # Node type definition
-├── llms/
-│   ├── llm.go                       # LLM interface (ILlm, IToolCallingLlm)
-│   └── openai_llm.go                # OpenAI-compatible LLM implementation (via OpenRouter)
-├── backends/
-│   ├── backend.go                   # Backend interfaces (IFileSystemBackend, IExecutionBackend)
-│   ├── definitions.go               # Predefined tool definitions for backends
-│   ├── local_filesystem.go          # Local filesystem backend (ls, read, grep, glob, write, edit)
-│   ├── local_shell.go               # Local shell execution backend
-│   └── models.go                    # Backend input/output models
-├── messages/
-│   └── models.go                    # Message types (Human, AI, Tool, System) and helper methods
-├── stores/
-│   └── session.go                   # Session store interface & in-memory implementation
-├── tools/
-│   ├── executor.go                  # Tool executor that dispatches function calls
-│   ├── function_call.go             # FunctionDefinition, schema generation via reflection
-│   ├── basic.go                      # Built-in tools: get_date_time
-│   └── internet.go                   # Built-in tools: internet_search, open_url
-├── .env                             # Environment variables (API keys, config)
-├── .gitignore
-├── go.mod
-└── go.sum
+├── agent/          — Agent core, graph nodes, middlewares, and memory store
+│   ├── memory/     — SQLite-backed persistent memory with full-text search
+├── backends/       — Execution and file system backend abstractions
+├── graph/          — Generic graph-based execution engine
+├── llms/           — LLM abstraction and OpenAI-compatible implementation
+├── messages/       — Message and conversation models
+├── prompts/        — System prompt templates (embedded via Go embed)
+├── stores/         — Session state persistence (in-memory, extensible)
+├── tools/          — Built-in tools (internet search, URL reading, date/time)
+├── main.go         — Entry point and middleware wiring
+├── Makefile        — Build, test, and run targets
+└── TODO.md         — Upcoming improvements
 ```
-
-## How It Works
-
-1. The agent is initialized with an LLM, a tool executor, and a session store.
-2. A **directed graph** with two nodes — `llmNode` and `toolNode` — controls execution flow.
-3. **`llmNode`**: Receives the full conversation history, sends it to the LLM, and reads the response. If the LLM wants to call a tool, the graph transitions to `toolNode`. Otherwise, the conversation ends.
-4. **`toolNode`**: Extracts tool calls from the last LLM message, executes them via the tool executor, appends the results to the conversation, and routes back to `llmNode` for the next reasoning step.
-5. The loop continues until the LLM decides not to make any more tool calls or a maximum iteration count is reached.
 
 ## Built-in Tools
 
 | Tool | Description |
 |---|---|
-| `get_date_time` | Returns the current date and time |
-| `internet_search` | Performs a web search using Tavily API |
-| `open_url` | Reads the contents of a web URL |
-| `ls` | Lists files in a directory (via filesystem backend) |
-| `read` | Reads a file's content (via filesystem backend) |
-| `grep` | Searches for a pattern in files (via filesystem backend) |
-| `glob` | Finds files matching a glob pattern (via filesystem backend) |
-| `write` | Writes content to a file (via filesystem backend) |
-| `edit` | Performs string replacement in a file (via filesystem backend) |
-| `execute` | Runs shell commands and returns their output (via execution backend) |
+| `execute` | Run a Unix shell command |
+| `ls` | List files and directories |
+| `read` | Read file content |
+| `write` | Create a new file |
+| `edit` | Edit a file by replacing string occurrences |
+| `grep` | Search for a literal text pattern in files |
+| `glob` | Find files matching a glob pattern |
+| `internet_search` | Search the web (via Tavily) |
+| `open_url` | Read content from a URL |
+| `get_date_time` | Get the current date and time |
+| `create_memory` | Save a persistent memory entry |
 
-## Configuration
-
-Create a `.env` file with the following variables:
+## Makefile Targets
 
 ```bash
-OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-OPENROUTER_API_KEY=your-api-key
-MODEL=openai/gpt-4o
-WORK_DIR=/path/to/working/directory
-TAVILY_API_KEY=your-tavily-api-key   # Required for internet tools
-LOG_LEVEL=0                           # 0=Debug, 1=Info, 2=Warn, 3=Error
+make build       # Build the project binary
+make run         # Build and run
+make test        # Run all tests
+make clean       # Remove build artifacts
+make help        # Show all targets
 ```
 
-## Running the Project
+## TODO
 
-You can use `make` to manage the project:
-
-- `make build`: Build the project and its TUI component.
-- `make run`: Build and run the main CLI application.
-- `make run-tui`: Build and run the Terminal User Interface (TUI).
-- `make test`: Run the project's test suite.
-- `make clean`: Clean up build artifacts.
-
-## Roadmap – Future Features
-
-Here are some features that would be nice to have:
-
-- **Persistent session storage** – Move beyond the in-memory store to a database-backed session store (e.g., SQLite or PostgreSQL) for resilience across restarts.
-- **Streaming responses** – Support streaming LLM output to the user in real-time via Server-Sent Events (SSE) or WebSockets.
-- **Agent memory & planning** – Add long-term memory and explicit planning nodes so the agent can break down complex multi-step tasks more reliably.
-- **Tool result caching** – Cache tool call results to avoid redundant executions and reduce API costs for repeated queries.
-- **Multi-agent orchestration** – Support multiple specialized agents that can collaborate, with one orchestrator delegating subtasks.
-- **Custom tool definitions via config** – Allow users to register custom tools from a config file or DSL without writing Go code.
-- **Graph visualization** – Add a way to export and visualize the agent's execution graph for debugging and observability.
-- **Error recovery & retry policies** – Implement configurable retry logic and fallback strategies for tool call failures.
+- [x] File system tools with `.gitignore`-aware ignore patterns
+- [ ] Atomic file edit via swap files
+- [ ] Resumable sessions with SQLite store
+- [ ] Retry failed agent runs
+- [ ] Execution and FS backend via containers (docker/podman)
+- [ ] Ability to spawn subagens

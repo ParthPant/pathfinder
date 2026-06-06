@@ -1,5 +1,0 @@
-- [x] FileSystem tools should have an ignore pattern. Maybe just use gitignore.
-- [ ] FileSystem edit tools should work on swap versions of files.
-- [ ] Resumable sessions. Use implement sqlite store.
-- [ ] Ability to retry a run.
-- [ ] Execute should use Rbash.
