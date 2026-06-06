@@ -1,0 +1,236 @@
+@startuml
+!theme plain
+skinparam packageStyle rectangle
+skinparam backgroundColor #FAFAFA
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+
+title Pathfinder -- Architecture Overview
+
+legend bottom
+  <b>Relationship Legend</b>
+  (..|>) implements
+  (--|>) extends / inherits
+  (o-)"has a" / contains / references
+endlegend
+
+' ==================== PACKAGE: graph ====================
+package "graph" as graph_pkg #F0F0FF {
+  interface "IGraph[T,E,I]" as IGraph
+  interface "ICommand[T,E,I]" as ICommand
+
+  class "BaseGraph[T,E,I]" as BaseGraph {
+    - state: T
+    - currentNode: *string
+    - nodes: map[string]Node[T,E,I]
+    - entryNode: string
+    - maxIterations: int
+    - store: IStore[T]
+  }
+
+  class "Command[T,E,I]" as Command
+  class "ExitCommand[T,E,I]" as ExitCommand
+  class "NoOpCommand[T,E,I]" as NoOpCommand
+  class "ResumeCommand[T,E,I]" as ResumeCommand
+
+  BaseGraph ..|> IGraph : implements
+  Command ..|> ICommand : implements
+  ExitCommand ..|> ICommand : implements
+  NoOpCommand ..|> ICommand : implements
+  ResumeCommand ..|> ICommand : implements
+}
+
+' ==================== PACKAGE: llms ====================
+package "llms" as llms_pkg #E8F5E9 {
+  interface "ILlm" as ILlm {
+    + NewResponse()
+    + Config()
+  }
+
+  interface "IToolCallingLlm" as IToolCallingLlm {
+    + RegisterFunctionDefinition()
+  }
+
+  IToolCallingLlm ..|> ILlm : extends
+
+  class "OpenAiLlm" as OpenAiLlm {
+    - config: LlmConfig
+    - client: *openai.Client
+    - FunctionDefinitions: []FunctionDefinition
+  }
+  OpenAiLlm ..|> IToolCallingLlm : implements
+}
+
+' ==================== PACKAGE: tools ====================
+package "tools" as tools_pkg #FFF3E0 {
+  interface "IToolExecutor" as IToolExecutor {
+    + Execute()
+    + RegisterFunction()
+    + GetTools()
+  }
+
+  class "ToolExecutor" as ToolExecutor {
+    - Functions: map[string]FunctionDefinition
+  }
+  ToolExecutor ..|> IToolExecutor : implements
+
+  class "FunctionDefinition" as FunctionDefinition
+  class "ToolParams" as ToolParams
+
+  ToolExecutor o-- "0..*" FunctionDefinition : has
+  OpenAiLlm o-- "0..*" FunctionDefinition : registers
+}
+
+' ==================== PACKAGE: backends ====================
+package "backends" as backends_pkg #FCE4EC {
+  interface "IFileSystemBackend" as IFileSystemBackend {
+    + Ls()
+    + Read()
+    + Grep()
+    + Glob()
+    + Write()
+    + Edit()
+  }
+
+  interface "IExecutionBackend" as IExecutionBackend {
+    + Execute()
+  }
+
+  class "LocalFileSystemBackend" as LocalFileSystemBackend {
+    - root: string
+    - ignorePolicy: FSIgnorePolicy
+  }
+  LocalFileSystemBackend ..|> IFileSystemBackend : implements
+
+  class "LocalShellBackend" as LocalShellBackend {
+    - workingDir: string
+    - env: map[string]string
+  }
+  LocalShellBackend ..|> IExecutionBackend : implements
+}
+
+' ==================== PACKAGE: stores ====================
+package "stores" as stores_pkg #E8EAF6 {
+  interface "IStore[T]" as IStore {
+    + NewSession()
+    + GetById()
+    + SaveState()
+  }
+
+  class "InMemoryStore[T]" as InMemoryStore {
+    - sessions: map[string]*T
+  }
+  InMemoryStore ..|> IStore : implements
+
+  BaseGraph o-- IStore : has
+}
+
+' ==================== PACKAGE: messages ====================
+package "messages" as messages_pkg #F3E5F5 {
+  class "Message" as Message {
+    - Role: MessageRole
+  }
+  class "HumanMessage" as HumanMessage
+  class "SystemMessage" as SystemMessage
+  class "AiMessage" as AiMessage {
+    - Output: []OutputItem
+  }
+  class "ToolMessage" as ToolMessage
+  class "OutputItem" as OutputItem
+  class "InputContent" as InputContent
+
+  Message o-- HumanMessage : has
+  Message o-- SystemMessage : has
+  Message o-- AiMessage : has
+  Message o-- ToolMessage : has
+  AiMessage o-- "0..*" OutputItem : has
+}
+
+' ==================== PACKAGE: agent/memory ====================
+package "agent.memory" as memory_pkg #FFE0B2 {
+  interface "IMemoryStore" as IMemoryStore {
+    + Insert()
+    + GetAll()
+    + Search()
+    + Close()
+  }
+
+  class "FTSMemoryStore" as FTSMemoryStore {
+    - db: *sql.DB
+    - sqlitePath: string
+    - memoryPath: string
+  }
+  FTSMemoryStore ..|> IMemoryStore : implements
+
+  class "MemoryNote" as MemoryNote
+}
+
+' ==================== PACKAGE: agent ====================
+package "agent" as agent_pkg #E0F7FA {
+  class "Agent" as Agent {
+    - llm: IToolCallingLlm
+    - toolExecutor: IToolExecutor
+    - executionBackend: IExecutionBackend
+    - fsBackend: IFileSystemBackend
+    - middlewares: []IMiddleware[AgentState]
+  }
+  Agent --|> BaseGraph : extends (embedded)
+
+  class "AgentState" as AgentState {
+    - systemMessages: []Message
+    - messages: []Message
+    - userRejectedTools: map[string]struct{}
+  }
+
+  class "AgentEvent" as AgentEvent
+  class "AgentInterrupt" as AgentInterrupt
+
+  interface "IMiddleware[T]" as IMiddleware {
+    + OnAttach()
+    + BeforeAgent()
+    + AfterAgent()
+    + BeforeLlm()
+    + AfterLlm()
+  }
+
+  class "MemoryMiddleware" as MemoryMiddleware {
+    - memoryStore: IMemoryStore
+    - systemPrompt: string
+    - memoriesDir: string
+  }
+  MemoryMiddleware ..|> IMiddleware : implements
+
+  class "SkillsMiddleware" as SkillsMiddleware {
+    - skillsDir: string
+    - skills: []Skill
+  }
+  SkillsMiddleware ..|> IMiddleware : implements
+
+  class "SummarizationMiddleware" as SummarizationMiddleware {
+    - tokenThreshold: int64
+    - keep: int
+    - llm: ILlm
+  }
+  SummarizationMiddleware ..|> IMiddleware : implements
+
+  class "HITLMiddleware" as HITLMiddleware {
+    - agent: *Agent
+    - hitlTools: map[string]struct{}
+  }
+  HITLMiddleware ..|> IMiddleware : implements
+
+  Agent o-- AgentState : manages
+  AgentState o-- "0..*" Message : contains
+  Agent o-- IToolCallingLlm : has
+  Agent o-- IToolExecutor : has
+  Agent o-- IExecutionBackend : has
+  Agent o-- IFileSystemBackend : has
+  Agent o-- "0..*" IMiddleware : has
+
+  MemoryMiddleware o-- IMemoryStore : has
+  MemoryMiddleware o-- IFileSystemBackend : uses
+  SummarizationMiddleware o-- ILlm : has
+  HITLMiddleware o-- Agent : references
+}
+
+@enduml
