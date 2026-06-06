@@ -58,8 +58,11 @@ func main() {
 	a.RegisterFunctionCall(tools.InternetSearchTool)
 	a.RegisterFunctionCall(tools.OpenURLTool)
 
-	memoryMiddleware := agent.NewMemoryMiddleware(prompts.MemoryPrompt, ".pathfinder", fsBackend)
+	memoryMiddleware := agent.NewMemoryMiddleware(prompts.MemoryPrompt, ".pathfinder/memory", fsBackend)
 	a.AddMiddleware(memoryMiddleware)
+
+	skillsMiddleware := agent.NewSkillsMiddleware(".pathfinder/skills")
+	a.AddMiddleware(skillsMiddleware)
 
 	summaryLlmConfig := llms.LlmConfig{
 		BaseUrl:         os.Getenv("OPENROUTER_BASE_URL"),
@@ -71,7 +74,7 @@ func main() {
 	summarizeMiddleware := agent.NewSummarizationMiddleware(summaryLlm, prompts.SummarizationPrompt, 90000, 10)
 	a.AddMiddleware(summarizeMiddleware)
 
-	hitlMiddleware := agent.NewHITLMiddleware(agent.WithHITLTool("execute"))
+	hitlMiddleware := agent.NewHITLMiddleware()
 	a.AddMiddleware(hitlMiddleware)
 
 	_, err = a.StartSession()
@@ -126,7 +129,7 @@ func main() {
 func handleIntr(i *agent.AgentInterrupt, scanner *bufio.Scanner) agent.AgentCmd {
 	switch i.Type {
 	case agent.INTR_TOOLCALL:
-		fmt.Printf("Agent wants to call %s (y/n): ", i.OfToolCall.Call.Name)
+		fmt.Printf("Agent wants to call %s with args %v (y/n): ", i.OfToolCall.Call.Name, i.OfToolCall.Call.Arguments)
 	}
 	for {
 		var userInput string

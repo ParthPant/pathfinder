@@ -1,0 +1,1 @@
+The repository uses a conventional commit format for messages: `<type>: <description>`. Common types include 'feat', 'fix', and 'refactor'.
