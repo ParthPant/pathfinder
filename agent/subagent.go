@@ -10,7 +10,6 @@ import (
 	"github.com/ParthPant/pathfinder/messages"
 	"github.com/ParthPant/pathfinder/stores"
 	"github.com/ParthPant/pathfinder/tools"
-	"github.com/openai/openai-go/v3/shared"
 )
 
 // SpawnSubagentInput is the input parameter struct for the spawn_subagent tool.
@@ -24,13 +23,13 @@ type SpawnSubagentInput struct {
 // SpawnSubagentTool is the FunctionDefinition for the spawn_subagent tool.
 // The Function field is set dynamically in RegisterSpawnSubagentTool.
 var SpawnSubagentTool = tools.FunctionDefinition{
-	Type:        "function",
-	Name:        "spawn_subagent",
+	Type: "function",
+	Name: "spawn_subagent",
 	Description: "Use this tool to spawn a subagent to complete a given task. " +
 		"The subagent will have access to configurable tools and reasoning effort. " +
 		"Available tools: 'files' (read/write/ls/grep/glob/edit), 'execution' (files + shell), " +
 		"'internet' (files + shell + internet_search + open_url), 'all' (everything except spawn_subagent). " +
-		"Reasoning: 'none', 'low', 'medium', 'high'.",
+		"Reasoning: 'none', 'low', 'medium', 'high', 'xhigh'.",
 	Strict: false,
 }
 
@@ -41,9 +40,9 @@ func (agent *Agent) spawnSubagent(ctx context.Context, params SpawnSubagentInput
 		"files", params.Files, "reasoning", params.Reasoning, "tools", params.AvailableTools)
 
 	// Determine reasoning effort
-	reasoningEffort := shared.ReasoningEffort(params.Reasoning)
+	reasoningEffort := llms.ReasoningEffortType(params.Reasoning)
 	if reasoningEffort == "" {
-		reasoningEffort = shared.ReasoningEffortMedium
+		reasoningEffort = llms.ReasoningEffortType("medium")
 	}
 
 	// 1. Clone LLM config and set reasoning effort

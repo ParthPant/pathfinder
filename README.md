@@ -158,8 +158,8 @@ make help        # Show all targets
 ## TODO
 
 - [x] File system tools with `.gitignore`-aware ignore patterns
+- [x] Ability to spawn subagents
 - [ ] Atomic file edit via swap files
 - [ ] Resumable sessions with SQLite store
 - [ ] Retry failed agent runs
 - [ ] Execution and FS backend via containers (docker/podman)
-- [ ] Ability to spawn subagens

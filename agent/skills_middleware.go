@@ -38,10 +38,9 @@ type Skill struct {
 	Content string
 }
 
-func NewSkillsMiddleware(skillsDir string, opts ...SkillsOpt) *SkillsMiddleware {
+func NewSkillsMiddleware(skillsDir string, opts ...SkillsOpt) (*SkillsMiddleware, error) {
 	if err := os.MkdirAll(skillsDir, 0744); err != nil {
-		slog.Error("Error creating skills directory", "error", err)
-		return nil
+		return nil, err
 	}
 
 	m := SkillsMiddleware{
@@ -58,7 +57,7 @@ func NewSkillsMiddleware(skillsDir string, opts ...SkillsOpt) *SkillsMiddleware 
 		m.skills = append(m.skills, skill)
 	}
 
-	return &m
+	return &m, nil
 }
 
 func WithSkillsPromptTemplate(t string) SkillsOpt {
@@ -74,7 +73,7 @@ func (m *SkillsMiddleware) OnAttach(a *Agent) error {
 func (m *SkillsMiddleware) BeforeAgent(ctx context.Context, eventCh AgentEventCh, intrCh AgentIntrCh, state AgentState) (AgentState, error) {
 	for _, sysMessage := range state.systemMessages {
 		if sysMessage.SystemMessage.Id == m.promptMessageId {
-			slog.Debug("Skills prompt already present in the conversation. Skipping retrieving memories.")
+			slog.Debug("Skills prompt already present in the conversation. Skipping retrieving skills.")
 			return state, nil
 		}
 	}
@@ -146,6 +145,8 @@ func readSkills(dir string) []Skill {
 			slog.Error("Error while reading skill file", "path", path, "error", err)
 			return nil
 		}
+
+		defer file.Close()
 
 		var matter SkillFrontmatter
 		content, err := frontmatter.Parse(file, &matter)

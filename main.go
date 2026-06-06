@@ -61,7 +61,10 @@ func main() {
 	memoryMiddleware := agent.NewMemoryMiddleware(prompts.MemoryPrompt, ".pathfinder/memory", fsBackend)
 	a.AddMiddleware(memoryMiddleware)
 
-	skillsMiddleware := agent.NewSkillsMiddleware(".pathfinder/skills")
+	skillsMiddleware, err := agent.NewSkillsMiddleware(".pathfinder/skills")
+	if err != nil {
+		panic(err)
+	}
 	a.AddMiddleware(skillsMiddleware)
 
 	summaryLlmConfig := llms.LlmConfig{

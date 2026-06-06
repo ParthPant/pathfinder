@@ -8,6 +8,8 @@ import (
 	"github.com/openai/openai-go/v3/shared"
 )
 
+type ReasoningEffortType = shared.ReasoningEffort
+
 type ILlm interface {
 	NewResponse(context.Context, []messages.Message) (messages.Message, error)
 	Config() *LlmConfig
@@ -24,5 +26,5 @@ type LlmConfig struct {
 	APIKey          string
 	Model           string
 	MaxOutputTokens int64
-	ReasoningEffort shared.ReasoningEffort // "" defaults to medium in NewResponse
+	ReasoningEffort ReasoningEffortType // "" defaults to medium in NewResponse
 }

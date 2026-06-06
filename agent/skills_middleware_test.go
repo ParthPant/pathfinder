@@ -67,7 +67,8 @@ func TestNewSkillsMiddleware_CreatesDirAndReadsSkills(t *testing.T) {
 		"Some math skill content.",
 	)
 
-	m := NewSkillsMiddleware(dir)
+	m, err := NewSkillsMiddleware(dir)
+	require.NoError(t, err)
 	require.NotNil(t, m)
 	assert.Equal(t, dir, m.skillsDir)
 	assert.Equal(t, "skill_middleware_sys_prompt", m.promptMessageId)
@@ -82,7 +83,8 @@ func TestNewSkillsMiddleware_CreatesDirEvenIfMissing(t *testing.T) {
 	_, err := os.Stat(dir)
 	assert.True(t, os.IsNotExist(err))
 
-	m := NewSkillsMiddleware(dir)
+	m, err := NewSkillsMiddleware(dir)
+	require.NoError(t, err)
 	require.NotNil(t, m)
 
 	_, err = os.Stat(dir)
@@ -90,14 +92,16 @@ func TestNewSkillsMiddleware_CreatesDirEvenIfMissing(t *testing.T) {
 }
 
 func TestNewSkillsMiddleware_PopulatesDefaultTemplate(t *testing.T) {
-	m := NewSkillsMiddleware(t.TempDir())
+	m, err := NewSkillsMiddleware(t.TempDir())
+	require.NoError(t, err)
 	require.NotNil(t, m)
 	assert.NotEmpty(t, m.systemPromptTemplate, "default template must not be empty")
 }
 
 func TestNewSkillsMiddleware_WithCustomPromptTemplate(t *testing.T) {
 	customTmpl := "Custom: {{.Sources}}"
-	m := NewSkillsMiddleware(t.TempDir(), WithSkillsPromptTemplate(customTmpl))
+	m, err := NewSkillsMiddleware(t.TempDir(), WithSkillsPromptTemplate(customTmpl))
+	require.NoError(t, err)
 	require.NotNil(t, m)
 	assert.Equal(t, customTmpl, m.systemPromptTemplate)
 }
@@ -117,7 +121,8 @@ func TestNewSkillsMiddleware_SkipsNonSkillFiles(t *testing.T) {
 	os.MkdirAll(filepath.Join(dir, "subdir"), 0744)
 	os.WriteFile(filepath.Join(dir, "subdir", "notes.md"), []byte("note"), 0644)
 
-	m := NewSkillsMiddleware(dir)
+	m, err := NewSkillsMiddleware(dir)
+	require.NoError(t, err)
 	require.NotNil(t, m)
 	assert.Len(t, m.skills, 1, "only SKILL.md files should be loaded")
 }
@@ -138,7 +143,8 @@ func TestNewSkillsMiddleware_ReadsMultipleSkills(t *testing.T) {
 		"Code content",
 	)
 
-	m := NewSkillsMiddleware(dir)
+	m, err := NewSkillsMiddleware(dir)
+	require.NoError(t, err)
 	require.NotNil(t, m)
 	assert.Len(t, m.skills, 3)
 }
@@ -152,7 +158,8 @@ func TestNewSkillsMiddleware_LoadsFileWithoutFrontmatter(t *testing.T) {
 	err = os.WriteFile(filepath.Join(dir, "nofm/SKILL.md"), []byte("Just plain text, no frontmatter."), 0644)
 	require.NoError(t, err)
 
-	m := NewSkillsMiddleware(dir)
+	m, err := NewSkillsMiddleware(dir)
+	require.NoError(t, err)
 	require.NotNil(t, m)
 	require.Len(t, m.skills, 1)
 	s := m.skills[0]
@@ -180,10 +187,11 @@ func TestWithSkillsPromptTemplate(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestOnAttach_ReturnsNil(t *testing.T) {
-	m := NewSkillsMiddleware(t.TempDir())
+	m, err := NewSkillsMiddleware(t.TempDir())
+	require.NoError(t, err)
 	require.NotNil(t, m)
 
-	err := m.OnAttach(nil)
+	err = m.OnAttach(nil)
 	assert.NoError(t, err)
 }
 
@@ -192,7 +200,8 @@ func TestOnAttach_ReturnsNil(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestBeforeAgent_AlreadyHasPrompt(t *testing.T) {
-	m := NewSkillsMiddleware(t.TempDir())
+	m, err := NewSkillsMiddleware(t.TempDir())
+	require.NoError(t, err)
 	require.NotNil(t, m)
 
 	state := stateWithPromptId("skill_middleware_sys_prompt")
@@ -211,7 +220,8 @@ func TestBeforeAgent_AddsPromptWhenMissing(t *testing.T) {
 		"Test content",
 	)
 
-	m := NewSkillsMiddleware(dir)
+	m, err := NewSkillsMiddleware(dir)
+	require.NoError(t, err)
 	require.NotNil(t, m)
 
 	state := emptyState()
@@ -228,10 +238,11 @@ func TestBeforeAgent_AddsPromptWhenMissing(t *testing.T) {
 }
 
 func TestBeforeAgent_ErrorOnBadTemplate(t *testing.T) {
-	m := NewSkillsMiddleware(t.TempDir(), WithSkillsPromptTemplate("{{.BadField"))
+	m, err := NewSkillsMiddleware(t.TempDir(), WithSkillsPromptTemplate("{{.BadField"))
+	require.NoError(t, err)
 	require.NotNil(t, m)
 
-	_, err := m.BeforeAgent(context.Background(), nil, nil, emptyState())
+	_, err = m.BeforeAgent(context.Background(), nil, nil, emptyState())
 	assert.Error(t, err)
 }
 
@@ -242,13 +253,14 @@ func TestBeforeAgent_IdempotentOnMultipleCalls(t *testing.T) {
 		"Test content",
 	)
 
-	m := NewSkillsMiddleware(dir)
+	m, err := NewSkillsMiddleware(dir)
+	require.NoError(t, err)
 	require.NotNil(t, m)
 
 	state := emptyState()
 
 	// First call adds the prompt
-	state, err := m.BeforeAgent(context.Background(), nil, nil, state)
+	state, err = m.BeforeAgent(context.Background(), nil, nil, state)
 	require.NoError(t, err)
 	require.Len(t, state.systemMessages, 1)
 
@@ -264,7 +276,8 @@ func TestBeforeAgent_IdempotentOnMultipleCalls(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestPassthroughMethods_ReturnStateUnchanged(t *testing.T) {
-	m := NewSkillsMiddleware(t.TempDir())
+	m, err := NewSkillsMiddleware(t.TempDir())
+	require.NoError(t, err)
 	require.NotNil(t, m)
 
 	ctx := context.Background()
@@ -298,7 +311,8 @@ func TestAssemblePrompt_RendersTemplate(t *testing.T) {
 		"Web skill content here.",
 	)
 
-	m := NewSkillsMiddleware(dir)
+	m, err := NewSkillsMiddleware(dir)
+	require.NoError(t, err)
 	require.NotNil(t, m)
 	require.Len(t, m.skills, 2)
 
@@ -319,9 +333,10 @@ func TestAssemblePrompt_RendersTemplate(t *testing.T) {
 func TestAssemblePrompt_WithCustomTemplate(t *testing.T) {
 	customTmpl := "Skills: {{range .Skills}}{{.Name}}: {{.Description}}\n{{end}}"
 
-	m := NewSkillsMiddleware(t.TempDir(),
+	m, err := NewSkillsMiddleware(t.TempDir(),
 		WithSkillsPromptTemplate(customTmpl),
 	)
+	require.NoError(t, err)
 	require.NotNil(t, m)
 
 	// Inject a skill manually so we don't depend on file I/O
@@ -351,7 +366,8 @@ func TestAssemblePrompt_ErrorOnBadTemplate(t *testing.T) {
 }
 
 func TestAssemblePrompt_EmptySkills(t *testing.T) {
-	m := NewSkillsMiddleware(t.TempDir())
+	m, err := NewSkillsMiddleware(t.TempDir())
+	require.NoError(t, err)
 	require.NotNil(t, m)
 
 	// No skills written, so m.skills should be empty
@@ -461,7 +477,8 @@ func TestIntegration_BeforeAgentProducesValidPrompt(t *testing.T) {
 		"Web content",
 	)
 
-	m := NewSkillsMiddleware(dir)
+	m, err := NewSkillsMiddleware(dir)
+	require.NoError(t, err)
 	require.NotNil(t, m)
 
 	state, err := m.BeforeAgent(context.Background(), nil, nil, emptyState())
@@ -515,7 +532,8 @@ func BenchmarkAssemblePrompt(b *testing.B) {
 		)
 	}
 
-	m := NewSkillsMiddleware(dir)
+	m, err := NewSkillsMiddleware(dir)
+	require.NoError(b, err)
 
 	b.ResetTimer()
 	for b.Loop() {
