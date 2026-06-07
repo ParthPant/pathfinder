@@ -35,8 +35,14 @@ func (lfs *LocalFileSystemBackend) GetRoot() string {
 	return lfs.root
 }
 
+func (lfs *LocalFileSystemBackend) PWD(ctx context.Context, input PWDInput) (PWDResult, error) {
+	return PWDResult{
+		PWD: lfs.root,
+	}, nil
+}
+
 func (lfs *LocalFileSystemBackend) Ls(ctx context.Context, input LsInput) (LsResult, error) {
-	basePath := filepath.Join(lfs.root, input.Path)
+	basePath := lfs.absPath(input.Path)
 	slog.Debug("Local File System LS", "path", basePath)
 	files, err := os.ReadDir(basePath)
 	if err != nil {
@@ -73,7 +79,7 @@ func (lfs *LocalFileSystemBackend) Ls(ctx context.Context, input LsInput) (LsRes
 }
 
 func (lfs *LocalFileSystemBackend) Read(ctx context.Context, input ReadInput) (ReadResult, error) {
-	path := filepath.Join(lfs.root, input.Path)
+	path := lfs.absPath(input.Path)
 	slog.Info("Local File System Read", "path", path, "input", input)
 
 	if ignore, _ := lfs.ignorePolicy.ShouldIgnore(filepath.Join(path)); ignore {
@@ -121,7 +127,7 @@ func (lfs *LocalFileSystemBackend) Read(ctx context.Context, input ReadInput) (R
 }
 
 func (lfs *LocalFileSystemBackend) Grep(ctx context.Context, input GrepInput) (GrepResult, error) {
-	path := filepath.Join(lfs.root, input.Path)
+	path := lfs.absPath(input.Path)
 	slog.Debug("Local File System Grep", "path", path)
 
 	var matches []string
@@ -173,7 +179,7 @@ func (lfs *LocalFileSystemBackend) Grep(ctx context.Context, input GrepInput) (G
 func (lfs *LocalFileSystemBackend) Glob(ctx context.Context, input GlobInput) (GlobResult, error) {
 	searchBasePath := lfs.root
 	if input.Path != nil {
-		searchBasePath = filepath.Join(searchBasePath, *input.Path)
+		searchBasePath = lfs.absPath(*input.Path)
 	}
 	slog.Debug("Local File System Glob", "path", searchBasePath, "pattern", input.Pattern)
 
@@ -215,7 +221,7 @@ func (lfs *LocalFileSystemBackend) Glob(ctx context.Context, input GlobInput) (G
 }
 
 func (lfs *LocalFileSystemBackend) Write(ctx context.Context, input WriteInput) (WriteResult, error) {
-	path := filepath.Join(lfs.root, input.Path)
+	path := lfs.absPath(input.Path)
 	slog.Debug("Local File System Write", "path", path)
 
 	if ignore, _ := lfs.ignorePolicy.ShouldIgnore(input.Path); ignore {
@@ -239,7 +245,7 @@ func (lfs *LocalFileSystemBackend) Write(ctx context.Context, input WriteInput) 
 }
 
 func (lfs *LocalFileSystemBackend) Edit(ctx context.Context, input EditInput) (EditResult, error) {
-	path := filepath.Join(lfs.root, input.Path)
+	path := lfs.absPath(input.Path)
 	slog.Debug("Local File System Edit", "path", path)
 
 	if ignore, _ := lfs.ignorePolicy.ShouldIgnore(input.Path); ignore {
@@ -283,6 +289,14 @@ func (lfs *LocalFileSystemBackend) Edit(ctx context.Context, input EditInput) (E
 
 func (lfs *LocalFileSystemBackend) relPath(path string) (string, error) {
 	return filepath.Rel(lfs.root, path)
+}
+
+func (lfs *LocalFileSystemBackend) absPath(path string) string {
+	if strings.HasPrefix(path, lfs.root) {
+		return path
+	} else {
+		return filepath.Join(lfs.root, path)
+	}
 }
 
 func (lfs *LocalFileSystemBackend) grep(path string, pattern *regexp.Regexp) []GrepMatch {

@@ -5,6 +5,7 @@ import (
 )
 
 type IFileSystemBackend interface {
+	PWD(ctx context.Context, input PWDInput) (PWDResult, error)
 	Ls(ctx context.Context, input LsInput) (LsResult, error)
 	Read(ctx context.Context, input ReadInput) (ReadResult, error)
 	Grep(ctx context.Context, input GrepInput) (GrepResult, error)

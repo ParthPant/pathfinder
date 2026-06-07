@@ -102,6 +102,7 @@ func (agent *Agent) RegisterFileSystemBackend(fs backends.IFileSystemBackend) er
 	agent.fsBackend = fs
 
 	toolDefinitions := []func(backends.IFileSystemBackend) (tools.FunctionDefinition, error){
+		backends.PWDToolDefinition,
 		backends.LsToolDefinition,
 		backends.ReadToolDefinition,
 		backends.GrepToolDefinition,
@@ -117,13 +118,6 @@ func (agent *Agent) RegisterFileSystemBackend(fs backends.IFileSystemBackend) er
 		}
 		agent.RegisterFunctionCall(fd)
 	}
-
-	state := agent.GetState()
-	state.systemMessages = append(state.systemMessages, messages.NewTextMessage(
-		"system",
-		fmt.Sprintf("Project's current working directory: %s", fs.GetRoot()),
-		nil),
-	)
 
 	slog.Debug("Registered File System Backend.")
 	return nil

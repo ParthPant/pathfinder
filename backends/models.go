@@ -7,8 +7,14 @@ type FileInfo struct {
 	ModifiedAt string `json:"modified_at"`
 }
 
+type PWDInput struct{}
+
+type PWDResult struct {
+	PWD string `json:"pwd"`
+}
+
 type LsInput struct {
-	Path string `json:"path" tool:"Absolute directory path to list files from,required"`
+	Path string `json:"path" tool:"Relative path to PWD of the directory to list files from,required"`
 }
 
 type LsResult struct {
@@ -17,7 +23,7 @@ type LsResult struct {
 }
 
 type ReadInput struct {
-	Path   string `json:"path" tool:"Absolute or relative file path.,required"`
+	Path   string `json:"path" tool:"Relative file path to PWD.,required"`
 	Offset int    `json:"offset" tool:"Line offset to start reading from (0-indexed)." default:"0"`
 	Limit  int    `json:"limit" tool:"Maximum number of lines to read.,required" default:"20000"`
 }
@@ -37,7 +43,7 @@ type GrepMatch struct {
 
 type GrepInput struct {
 	Pattern string  `json:"pattern" tool:"Literal string to search for (NOT regex)"`
-	Path    string  `json:"path" tool:"Directory or file path to search in. Defaults to current directory" default:"."`
+	Path    string  `json:"path" tool:"relative path of directory or file to search in. Defaults to current directory" default:"."`
 	Glob    *string `json:"glob,omitzero" tool:"Optional glob pattern to filter which files to search"`
 }
 
@@ -57,7 +63,7 @@ type GlobResult struct {
 }
 
 type WriteInput struct {
-	Path    string `json:"path" tool:"Path where the new files will be created,required"`
+	Path    string `json:"path" tool:"Path relative to PWD where the new files will be created,required"`
 	Content string `json:"content" tool:"Text content to write to the file.,required"`
 }
 
@@ -67,11 +73,12 @@ type WriteResult struct {
 }
 
 type EditInput struct {
-	Path       string `json:"path" tool:"Path to the file to edit.,required"`
+	Path       string `json:"path" tool:"Path relative to PWD of the file to edit.,required"`
 	OldString  string `json:"old_string" tool:"The text to search for and replace.,required"`
 	NewString  string `json:"new_string" tool:"The replacement text.,required"`
 	ReplaceAll bool   `json:"replace_all,omitzero" tool:"if 'true', relace all occurrences, if 'false' (default), replace only if exactly one occurrence exists." default:"false"`
 }
+
 type EditResult struct {
 	Path        string `json:"path"`
 	Occurrences int    `json:"occurrences"`

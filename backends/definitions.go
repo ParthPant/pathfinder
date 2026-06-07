@@ -11,6 +11,15 @@ func ExecuteToolDefinition(e IExecutionBackend) (tools.FunctionDefinition, error
 	)
 }
 
+func PWDToolDefinition(fs IFileSystemBackend) (tools.FunctionDefinition, error) {
+	return tools.NewFunctionDefinition("pwd",
+		"Get the path of current working directory.",
+		tools.ParamsFor[PWDInput](),
+		false,
+		fs.PWD,
+	)
+}
+
 func LsToolDefinition(fs IFileSystemBackend) (tools.FunctionDefinition, error) {
 	return tools.NewFunctionDefinition("ls",
 		"List files and directories in the specified directory (non-recursive)",

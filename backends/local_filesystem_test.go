@@ -36,7 +36,7 @@ func TestLs(t *testing.T) {
 	t.Logf("Working Dir: %s", fs.root)
 
 	ctx := context.Background()
-	path := "/"
+	path := dir
 	input := LsInput{
 		Path: path,
 	}

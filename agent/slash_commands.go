@@ -203,9 +203,11 @@ func (c *summarizeCommand) Execute(ctx context.Context, args string, m *SlashCom
 // helpCommand handles /help
 type helpCommand struct{}
 
-func (c *helpCommand) Name() string        { return "help" }
-func (c *helpCommand) Aliases() []string   { return []string{"h", "?"} }
-func (c *helpCommand) Description() string { return "List all available commands with their descriptions" }
+func (c *helpCommand) Name() string      { return "help" }
+func (c *helpCommand) Aliases() []string { return []string{"h", "?"} }
+func (c *helpCommand) Description() string {
+	return "List all available commands with their descriptions"
+}
 
 func (c *helpCommand) Execute(ctx context.Context, args string, m *SlashCommandsMiddleware, ch AgentEventCh, state AgentState) (AgentState, error) {
 	var sb strings.Builder

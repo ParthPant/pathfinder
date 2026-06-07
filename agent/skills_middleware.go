@@ -138,7 +138,6 @@ func readSkills(dir string) []Skill {
 			return nil
 		}
 
-		slog.Debug("Discovered Skill", "path", path)
 		skillPath := filepath.Join(dir, path)
 		file, err := os.Open(skillPath)
 		if err != nil {
@@ -155,8 +154,9 @@ func readSkills(dir string) []Skill {
 			return nil
 		}
 
+		slog.Debug("Discovered Skill", "path", skillPath)
 		skills = append(skills, Skill{
-			Path:             path,
+			Path:             skillPath,
 			SkillFrontmatter: matter,
 			Content:          string(content),
 		})
