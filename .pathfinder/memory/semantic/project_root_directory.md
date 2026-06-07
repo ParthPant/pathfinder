@@ -1,0 +1,1 @@
+The project 'pathfinder' lives at /home/parthpant/dev/pathfinder, not at the root /. When running build commands (make, go build, etc.), always use /home/parthpant/dev/pathfinder as the working directory.

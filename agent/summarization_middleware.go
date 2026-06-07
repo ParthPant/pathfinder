@@ -41,7 +41,7 @@ func (m *SummarizationMiddleware) BeforeLlm(ctx context.Context, ch AgentEventCh
 
 	if predictedTokens >= m.tokenThreshold {
 		slog.Info("Summarizing Conversation", "predictedTokens", predictedTokens, "threshold", m.tokenThreshold, "keep", m.keep, "conversationLength", len(state.messages))
-		if compactedMessages, err := m.summarize(ctx, state.messages); err != nil {
+		if compactedMessages, err := m.Summarize(ctx, state.messages); err != nil {
 			slog.Warn("Error summarizing conversation", "error", err)
 		} else {
 			state.messages = compactedMessages
@@ -56,7 +56,7 @@ func (m *SummarizationMiddleware) AfterLlm(_ context.Context, ch AgentEventCh, c
 	return state, nil
 }
 
-func (m *SummarizationMiddleware) summarize(ctx context.Context, conversation []messages.Message) ([]messages.Message, error) {
+func (m *SummarizationMiddleware) Summarize(ctx context.Context, conversation []messages.Message) ([]messages.Message, error) {
 	if m.keep >= len(conversation) {
 		return conversation, nil
 	}

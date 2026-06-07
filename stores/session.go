@@ -7,10 +7,16 @@ import (
 	"github.com/google/uuid"
 )
 
+type Session struct {
+	Id       string
+	Metadata map[string]any
+}
+
 type IStore[T any] interface {
 	NewSession() (string, error)
 	GetById(id string) (T, error)
 	SaveState(sessionId string, state T) error
+	ListSessions() []Session
 }
 
 type InMemoryStore[T any] struct {
@@ -54,4 +60,14 @@ func (repo *InMemoryStore[T]) SaveState(sessionId string, state T) error {
 	}
 	slog.Warn("Session Not Found", "id", sessionId)
 	return fmt.Errorf("Session Not Found id=%s", sessionId)
+}
+
+func (repo *InMemoryStore[T]) ListSessions() []Session {
+	sessions := make([]Session, 0)
+	for id := range repo.sessions {
+		sessions = append(sessions, Session{
+			Id: id,
+		})
+	}
+	return sessions
 }

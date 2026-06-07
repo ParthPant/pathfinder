@@ -48,7 +48,7 @@ func main() {
 
 	a := agent.NewAgent(llm, toolExecutor, inMemStore)
 
-	executionBackend := backends.NewShellBackend(os.Getenv("WORK_DIR"), map[string]string{})
+	executionBackend := backends.NewShellBackend(os.Getenv("WORK_DIR"), os.Environ())
 	a.RegisterExecutionBackend(executionBackend)
 
 	fsBackend := backends.NewLocalFileSystemBackend(os.Getenv("WORK_DIR"))
@@ -85,7 +85,7 @@ func main() {
 		panic(err)
 	}
 
-	_, err = a.StartSession()
+	_, err = a.NewSession()
 	if err != nil {
 		panic(err)
 	}
@@ -131,6 +131,12 @@ func main() {
 				intr.Resp <- handleIntr(intr.Value, scanner)
 			}
 		}
+
+		// After the graph finishes, check if exit was requested
+		if a.IsExitRequested() {
+			fmt.Println("Exiting Pathfinder. Goodbye!")
+			break
+		}
 	}
 }
 
@@ -173,6 +179,8 @@ func printEvent(e *agent.AgentEvent) {
 		fmt.Printf("AI [toolCall]: %s\n", e.OfToolCall.Call.Name)
 	case agent.TOOLRESP:
 		fmt.Printf("Tool Response: %s\n", e.OfToolResponse.Message.OutputText())
+	case agent.CMDRESP:
+		fmt.Printf("[System] %s\n", e.OfCmdResponse.Message)
 	case agent.AGENTERR:
 		fmt.Printf("Agent Error: %s\n", e.OfError.Err.Error())
 	default:

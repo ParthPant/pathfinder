@@ -8,6 +8,10 @@ import (
 )
 
 type IGraph[T any, E any, I any] interface {
+	NewSession() (string, error)
+	SessionStore() stores.IStore[T]
+	SetSesssion(string) error
+
 	Run(context.Context) (<-chan RunEvent[E], <-chan RunInterrupt[T, E, I])
 	SetState(T) error
 	GetState() T
@@ -21,14 +25,14 @@ type IGraph[T any, E any, I any] interface {
 }
 
 type BaseGraph[T any, E any, I any] struct {
-	state         T
-	currentNode   *string
-	nodes         map[string]Node[T, E, I]
-	completed     bool
-	maxIterations int
-	entryNode     string
-	sessionId     string
-	store         stores.IStore[T]
+	state            T
+	currentNode      *string
+	nodes            map[string]Node[T, E, I]
+	completed        bool
+	maxIterations    int
+	entryNode        string
+	currentSessionId string
+	store            stores.IStore[T]
 }
 
 type RunInterrupt[T any, E any, I any] struct {
@@ -93,7 +97,7 @@ func (g *BaseGraph[T, E, I]) SetEntryNode(n string) {
 
 func (g *BaseGraph[T, E, I]) SetState(newState T) error {
 	g.state = newState
-	g.store.SaveState(g.sessionId, g.state)
+	g.store.SaveState(g.currentSessionId, g.state)
 	return nil
 }
 
@@ -177,6 +181,19 @@ func (g *BaseGraph[T, E, I]) NewSession() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	g.sessionId = id
-	return id, nil
+	return id, g.SetSesssion(id)
+}
+
+func (g *BaseGraph[T, E, I]) SessionStore() stores.IStore[T] {
+	return g.store
+}
+
+func (g *BaseGraph[T, E, I]) SetSesssion(id string) error {
+	sessionState, err := g.store.GetById(id)
+	if err != nil {
+		return err
+	}
+
+	g.currentSessionId = id
+	return g.SetState(sessionState)
 }

@@ -11,6 +11,8 @@ type IFileSystemBackend interface {
 	Glob(ctx context.Context, input GlobInput) (GlobResult, error)
 	Write(ctx context.Context, input WriteInput) (WriteResult, error)
 	Edit(ctx context.Context, input EditInput) (EditResult, error)
+
+	GetRoot() string
 }
 
 type IExecutionBackend interface {

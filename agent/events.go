@@ -11,6 +11,7 @@ const (
 	TOOLCALL AgentEventType = "TOOLCALL"
 	TOOLRESP AgentEventType = "TOOLRESP"
 	AGENTERR AgentEventType = "AGENTERR"
+	CMDRESP  AgentEventType = "CMDRESP"
 )
 
 type AgentEvent struct {
@@ -19,6 +20,7 @@ type AgentEvent struct {
 	OfToolCall     EventToolCall
 	OfToolResponse EventToolResponse
 	OfError        EventError
+	OfCmdResponse  EventCmdResponse
 }
 
 type EventAIResponse struct {
@@ -66,5 +68,17 @@ func NewErrorEvent(err error) *AgentEvent {
 	return &AgentEvent{
 		Type:    AGENTERR,
 		OfError: EventError{Err: err},
+	}
+}
+
+type EventCmdResponse struct {
+	Message string
+}
+
+// NewCmdResponseEvent creates a new AgentEvent of type CMDRESP.
+func NewCmdResponseEvent(msg string) *AgentEvent {
+	return &AgentEvent{
+		Type:          CMDRESP,
+		OfCmdResponse: EventCmdResponse{Message: msg},
 	}
 }

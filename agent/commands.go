@@ -1,6 +1,8 @@
 package agent
 
-import "github.com/ParthPant/pathfinder/graph"
+import (
+	"github.com/ParthPant/pathfinder/graph"
+)
 
 type rejectToolCommand struct {
 	toolName string

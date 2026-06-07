@@ -92,6 +92,13 @@ func (agent *Agent) spawnSubagent(ctx context.Context, params SpawnSubagentInput
 
 	// NOTE: spawn_subagent and create_memory are NEVER registered on subagents.
 
+	// Subagents do have a access to the skills
+	skillsMiddleware, err := NewSkillsMiddleware(".pathfinder/skills")
+	if err != nil {
+		panic(err)
+	}
+	subAgent.AddMiddleware(skillsMiddleware)
+
 	// 5. Optionally load files as context messages
 	for _, filePath := range params.Files {
 		subAgent.UserInput(messages.NewTextMessage("user",
@@ -102,7 +109,7 @@ func (agent *Agent) spawnSubagent(ctx context.Context, params SpawnSubagentInput
 	subAgent.UserInput(messages.NewTextMessage("user", params.Task, nil))
 
 	// 7. Start a new session for the subagent
-	if _, err := subAgent.StartSession(); err != nil {
+	if _, err := subAgent.NewSession(); err != nil {
 		return nil, err
 	}
 

@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"context"
+	"fmt"
 	"log/slog"
 	"reflect"
 
@@ -26,6 +28,11 @@ type Agent struct {
 	executionBackend backends.IExecutionBackend
 	fsBackend        backends.IFileSystemBackend
 	middlewares      []IMiddleware[AgentState]
+	exitRequested    bool
+}
+
+func (agent *Agent) IsExitRequested() bool {
+	return agent.exitRequested
 }
 
 type AgentEventCh = chan<- graph.RunEvent[AgentEvent]
@@ -49,6 +56,12 @@ func NewAgent(llm llms.IToolCallingLlm, toolExecutor tools.IToolExecutor, sessio
 	agent.BaseGraph = base
 	agent.llm = llm
 	agent.toolExecutor = toolExecutor
+
+	// Auto-register CommandsMiddleware as the first middleware
+	cmdsMiddleware := NewSlashCommandsMiddleware()
+	agent.middlewares = append([]IMiddleware[AgentState]{cmdsMiddleware}, agent.middlewares...)
+	cmdsMiddleware.OnAttach(&agent)
+
 	return &agent
 }
 
@@ -57,10 +70,6 @@ func (agent *Agent) UserInput(message messages.Message) error {
 	state.messages = append(state.messages, message)
 	agent.SetState(state)
 	return nil
-}
-
-func (agent *Agent) StartSession() (string, error) {
-	return agent.NewSession()
 }
 
 func (agent *Agent) RegisterFunctionCall(fd tools.FunctionDefinition) error {
@@ -109,6 +118,13 @@ func (agent *Agent) RegisterFileSystemBackend(fs backends.IFileSystemBackend) er
 		agent.RegisterFunctionCall(fd)
 	}
 
+	state := agent.GetState()
+	state.systemMessages = append(state.systemMessages, messages.NewTextMessage(
+		"system",
+		fmt.Sprintf("Project's current working directory: %s", fs.GetRoot()),
+		nil),
+	)
+
 	slog.Debug("Registered File System Backend.")
 	return nil
 }
@@ -120,6 +136,21 @@ func (agent *Agent) AddMiddleware(m IMiddleware[AgentState]) error {
 	}
 	slog.Info("Attached middleware", "middleware", reflect.TypeOf(m).Elem().Name())
 	return nil
+}
+
+// SummarizeConversation finds the SummarizationMiddleware and uses it to summarize the conversation.
+func (agent *Agent) SummarizeConversation(ctx context.Context, state *AgentState) error {
+	for _, mware := range agent.middlewares {
+		if sm, ok := mware.(*SummarizationMiddleware); ok {
+			result, err := sm.Summarize(ctx, state.messages)
+			if err != nil {
+				return err
+			}
+			state.messages = result
+			return nil
+		}
+	}
+	return fmt.Errorf("SummarizationMiddleware not found")
 }
 
 func (agent *Agent) GetModel() llms.IToolCallingLlm {

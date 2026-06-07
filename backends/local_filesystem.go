@@ -31,6 +31,10 @@ func NewLocalFileSystemBackend(workingDir string) *LocalFileSystemBackend {
 	}
 }
 
+func (lfs *LocalFileSystemBackend) GetRoot() string {
+	return lfs.root
+}
+
 func (lfs *LocalFileSystemBackend) Ls(ctx context.Context, input LsInput) (LsResult, error) {
 	basePath := filepath.Join(lfs.root, input.Path)
 	slog.Debug("Local File System LS", "path", basePath)
