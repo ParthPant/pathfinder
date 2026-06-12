@@ -75,8 +75,6 @@ func (m SessionListModel) Update(msg tea.Msg) (SessionListModel, tea.Cmd) {
 					return types.SessionSwitchMsg{ID: sessionID}
 				}
 			}
-		case "esc":
-			m.focused = false
 		}
 
 	case tea.WindowSizeMsg:

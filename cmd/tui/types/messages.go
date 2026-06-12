@@ -7,30 +7,23 @@ import (
 	"github.com/ParthPant/pathfinder/stores"
 )
 
-// Deprecated: AgentEventMsg is superseded by ConversationEvent.
-// Kept for backward compatibility during transition.
-type AgentEventMsg struct {
-	Event *agent.AgentEvent
-}
-
 // ConversationEvent is the unified message type for the conversation panel.
-// Only one of AgentEvent or UserInput should be set per message.
 // Agent events come from the runner goroutine; user input comes from RootModel.
 type ConversationEvent struct {
 	AgentEvent *agent.AgentEvent
 	UserInput  *messages.Message
 }
 
-// FocusChangeMsg is emitted by RootModel when Tab cycles focus.
-// Sub-models consume this to update their focused field.
-type FocusChangeMsg struct {
-	ActivePaneId int
-}
-
 // AgentInterruptMsg wraps an agent interrupt along with its response channel
 // so the TUI can prompt the user and send the response back.
 type AgentInterruptMsg struct {
 	Interrupt graph.RunInterrupt[agent.AgentState, agent.AgentEvent, agent.AgentInterrupt]
+}
+
+// FocusChangeMsg is emitted by RootModel when Tab cycles focus.
+// Sub-models consume this to update their focused field.
+type FocusChangeMsg struct {
+	ActivePaneId int
 }
 
 // SendUserInputMsg signals that the user has submitted text from the input panel.

@@ -7,6 +7,7 @@ import (
 	"github.com/ParthPant/pathfinder/cmd/tui/styles"
 	"github.com/ParthPant/pathfinder/cmd/tui/types"
 	"github.com/ParthPant/pathfinder/graph"
+	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -100,6 +101,9 @@ func (m InputModel) Update(msg tea.Msg) (InputModel, tea.Cmd) {
 
 	case types.FocusChangeMsg:
 		m.focused = msg.ActivePaneId == 1 // ActivePaneInput
+
+	case cursor.BlinkMsg:
+		m.textArea, cmd = m.textArea.Update(msg)
 	}
 
 	return m, cmd

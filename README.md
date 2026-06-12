@@ -94,6 +94,10 @@ go build -o build/pathfinder .
 
 ## Usage
 
+### Demo
+
+![Pathfinder TUI Demo](demo.gif)
+
 Once running, Pathfinder provides an interactive REPL. Type your requests at the `User:` prompt and the agent will reason, use tools, and respond.
 
 ```

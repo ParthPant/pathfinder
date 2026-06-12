@@ -27,10 +27,7 @@ func runAgentSession(ctx context.Context, ag *agent.Agent, program *tea.Program)
 				continue
 			}
 			if e.Err != nil {
-				// Wrap the error as an AGENTERR event
-				program.Send(types.ConversationEvent{
-					AgentEvent: agent.NewErrorEvent(e.Err),
-				})
+				program.Send(types.ConversationEvent{AgentEvent: agent.NewErrorEvent(e.Err)})
 			} else if e.Value != nil {
 				program.Send(types.ConversationEvent{AgentEvent: e.Value})
 			}

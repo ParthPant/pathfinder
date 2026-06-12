@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/reflow/wrap"
 )
 
 // ConversationModel renders the full conversation history with scrolling support.
@@ -127,11 +128,14 @@ func (m ConversationModel) buildContent() string {
 		if i > 0 {
 			sb.WriteString("\n")
 		}
+		var s string
 		if entry.AgentEvent != nil {
-			sb.WriteString(renderEvent(entry.AgentEvent))
+			s = renderEvent(entry.AgentEvent)
 		} else if entry.UserInput != nil {
-			sb.WriteString(styles.UserMessageStyle.Render("👨 " + entry.UserInput.InputText()))
+			s = styles.UserMessageStyle.Render("👨 " + entry.UserInput.InputText())
 		}
+		s = wrap.String(s, m.viewport.Width-4)
+		sb.WriteString(s)
 	}
 	return sb.String()
 }
@@ -169,11 +173,7 @@ func renderEvent(e *agent.AgentEvent) string {
 		)
 
 	case agent.TOOLRESP:
-		output := e.OfToolResponse.Message.OutputText()
-		if len(output) > 500 {
-			output = output[:500] + "...\n[truncated]"
-		}
-		return styles.ToolResponseStyle.Render("📎 Tool Response:\n" + output)
+		return styles.ToolResponseStyle.Render("📎 Tool Response Sent")
 
 	case agent.AGENTERR:
 		return styles.ErrorStyle.Render("❌ Error: " + e.OfError.Err.Error())

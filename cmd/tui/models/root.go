@@ -22,11 +22,11 @@ const (
 // (conversation, input, session list) and the shared agent reference.
 // It acts as the central message dispatcher and layout manager.
 type RootModel struct {
+	ActivePaneId int
+
 	conversation ConversationModel
 	input        InputModel
 	sessionList  SessionListModel
-
-	ActivePaneId int
 
 	agent  *agent.Agent
 	ctx    context.Context
@@ -155,16 +155,15 @@ func (m *RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case types.SessionSwitchMsg:
 		// Set the new session on the agent
 		if err := m.agent.SetSesssion(msg.ID); err != nil {
-			evt := agent.NewErrorEvent(err)
 			var cmd tea.Cmd
 			m.conversation, cmd = m.conversation.Update(types.ConversationEvent{
-				AgentEvent: evt,
+				AgentEvent: agent.NewErrorEvent(err),
 			})
 			cmds = append(cmds, cmd)
 		} else {
 			// Clear the conversation history for the new session
 			m.conversation.entries = make([]types.ConversationEvent, 0)
-			m.conversation.viewport.SetContent(m.conversation.View())
+			m.conversation.viewport.SetContent(m.conversation.buildContent())
 		}
 		var cmd tea.Cmd
 		m.sessionList, cmd = m.sessionList.Update(msg)

@@ -21,6 +21,10 @@ type AgentState struct {
 	userRejectedTools map[string]struct{}
 }
 
+func (s *AgentState) GetMessages() []messages.Message {
+	return s.messages
+}
+
 type Agent struct {
 	graph.BaseGraph[AgentState, AgentEvent, AgentInterrupt]
 	llm              llms.IToolCallingLlm

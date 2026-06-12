@@ -146,6 +146,10 @@ func NewTextMessage(role string, text string, id *string) Message {
 	return message
 }
 
+func (m *Message) InputText() string {
+	return m.HumanMessage.Content.OfInputText
+}
+
 func (m *Message) OutputText() string {
 	var outputText strings.Builder
 	for _, output := range m.AiMessage.Output {
